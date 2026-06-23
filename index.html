@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NotebookLM // TA Edition</title>
+    <!-- PDF.js for local document parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <style>
+        /* === THEME & VARIABLES === */
+        :root {
+            --bg-body: #fdf2f8; /* very light pink background */
+            --bg-panel: #ffffff;
+            --text-main: #1f2937;
+            --text-muted: #6b7280;
+            --border-color: #fbcfe8;
+            --accent: #d946ef; /* vibrant pink */
+            --accent-hover: #c026d3;
+            --accent-light: #fae8ff;
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(217, 70, 239, 0.1), 0 2px 4px -1px rgba(217, 70, 239, 0.06);
+            --font-ui: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            --font-doc: "Times New Roman", Times, serif;
+        }
+
+        [data-theme="dark"] {
+            --bg-body: #0d090e;
+            --bg-panel: #1a131b;
+            --text-main: #f3f4f6;
+            --text-muted: #9ca3af;
+            --border-color: #4a344a;
+            --accent: #f472b6;
+            --accent-hover: #f9a8d4;
+            --accent-light: #301b2a;
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
+        }
+
+        /* === GLOBAL RESET === */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: var(--font-ui);
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            display: flex;
+            height: 100vh; /* Locked to viewport height */
+            overflow: hidden; /* No page-level scrolling */
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        /* === SCROLLBAR === */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+        /* === BUTTONS & INPUTS === */
+        button { cursor: pointer; border: none; background: transparent; font-family: inherit; color: inherit; transition: 0.2s; }
+        .btn-primary { background-color: var(--accent); color: white; padding: 0.5rem 1rem; border-radius: 8px; font-weight: 500; box-shadow: var(--shadow-sm); }
+        .btn-primary:hover { background-color: var(--accent-hover); }
+        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+        
+        input, textarea {
+            width: 100%; padding: 0.75rem; border: 1px solid var(--border-color);
+            border-radius: 8px; background-color: var(--bg-body); color: var(--text-main); font-family: inherit;
+        }
+        input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
+
+        /* === 1. LEFT SIDEBAR (SOURCES) === */
+        #sidebar {
+            width: 280px; min-width: 280px; flex-shrink: 0;
+            background-color: var(--bg-panel); border-right: 1px solid var(--border-color);
+            display: flex; flex-direction: column; height: 100%; z-index: 10;
+        }
+        .sidebar-header { padding: 1.5rem; border-bottom: 1px solid var(--border-color); }
+        .brand { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+        .brand h1 { font-size: 1.1rem; font-weight: 700; color: var(--accent); }
+        .sidebar-content { flex: 1; overflow-y: auto; padding: 1.5rem; }
+        
+        .source-box {
+            border: 2px dashed var(--border-color); border-radius: 8px; padding: 1.5rem 1rem;
+            text-align: center; cursor: pointer; transition: 0.2s; background: var(--bg-body); margin-bottom: 1rem;
+            position: relative;
+        }
+        .source-box:hover { border-color: var(--accent); color: var(--accent); }
+        .source-box input[type="file"] { position: absolute; top:0; left:0; width:100%; height:100%; opacity:0; cursor:pointer; }
+        
+        .doc-item {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0.75rem; margin-bottom: 0.5rem; border-radius: 6px;
+            background-color: var(--bg-body); border: 1px solid transparent; cursor: pointer;
+        }
+        .doc-item.active { border-color: var(--accent); background-color: var(--accent-light); }
+        .doc-name { font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px; font-weight: 500; }
+        .doc-remove { color: var(--text-muted); font-size: 1.1rem; }
+        .doc-remove:hover { color: #ef4444; }
+
+        /* === 2. CENTER WORKSPACE === */
+        #workspace {
+            flex: 1; min-width: 0; /* Prevents flex blowout */
+            display: flex; flex-direction: column; background-color: var(--bg-body); height: 100%;
+        }
+        .tabs { display: flex; background-color: var(--bg-panel); border-bottom: 1px solid var(--border-color); padding: 0 1rem; }
+        .tab-btn { padding: 1rem 1.5rem; font-size: 0.95rem; font-weight: 500; color: var(--text-muted); border-bottom: 2px solid transparent; }
+        .tab-btn:hover { color: var(--accent); }
+        .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+        
+        .tab-content { display: none; flex: 1; overflow-y: auto; position: relative; padding: 2rem; }
+        .tab-content.active { display: flex; flex-direction: column; align-items: center; }
+
+        /* Doc Viewer */
+        .arxiv-paper {
+            background: var(--bg-panel); width: 100%; max-width: 800px; padding: 4rem;
+            box-shadow: var(--shadow-md); border: 1px solid var(--border-color); border-radius: 4px;
+            font-family: var(--font-doc); font-size: 1.1rem; line-height: 1.8; color: var(--text-main);
+            word-wrap: break-word; overflow-wrap: break-word; margin: 0 auto;
+        }
+        .arxiv-paper h1 { font-size: 2rem; margin-bottom: 1.5rem; line-height: 1.2; font-family: var(--font-ui); font-weight: 700; }
+        .arxiv-paper h2 { font-size: 1.4rem; margin-top: 2rem; margin-bottom: 1rem; font-family: var(--font-ui); }
+        .empty-state { color: var(--text-muted); text-align: center; margin: auto; }
+
+        /* Slides Generator */
+        .slide-deck { width: 100%; max-width: 800px; aspect-ratio: 16/9; background: var(--bg-panel); border-radius: 12px; box-shadow: var(--shadow-md); padding: 3rem; display: flex; flex-direction: column; border: 1px solid var(--border-color); position: relative;}
+        .slide-title { font-size: 2rem; color: var(--accent); margin-bottom: 2rem; font-weight: 700; }
+        .slide-body { font-size: 1.3rem; line-height: 1.6; flex:1; }
+        .slide-body ul { padding-left: 2rem; }
+        .slide-body li { margin-bottom: 1rem; }
+        .slide-controls { display: flex; gap: 1rem; width: 100%; max-width: 800px; justify-content: space-between; margin-bottom: 1rem; align-items: center;}
+        
+        /* Video Simulator */
+        .sim-container { width: 100%; max-width: 800px; background: var(--bg-panel); border-radius: 12px; box-shadow: var(--shadow-md); border: 1px solid var(--border-color); display: flex; flex-direction: column; overflow: hidden; }
+        .sim-header { padding: 1.5rem; border-bottom: 1px solid var(--border-color); display: flex; gap: 1rem; align-items: center; }
+        .sim-stage { width: 100%; height: 400px; background: #111; position: relative; overflow: hidden; }
+        #physics-canvas { display: block; width: 100%; height: 100%; }
+        .sim-log { background: var(--bg-body); padding: 1rem; font-family: monospace; font-size: 0.9rem; border-top: 1px solid var(--border-color); min-height: 80px; max-height: 150px; overflow-y: auto;}
+
+        /* === 3. RIGHT CHAT STUDIO (TA) === */
+        #chat-studio {
+            width: 350px; min-width: 350px; flex-shrink: 0;
+            background-color: var(--bg-panel); border-left: 1px solid var(--border-color);
+            display: flex; flex-direction: column; height: 100%; z-index: 10;
+        }
+        .chat-header { padding: 1.5rem; border-bottom: 1px solid var(--border-color); font-weight: 600; color: var(--accent); display: flex; align-items: center; gap: 0.5rem; }
+        .chat-messages { flex: 1; overflow-y: auto; padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem; }
+        .msg { max-width: 90%; padding: 0.85rem 1rem; border-radius: 12px; font-size: 0.95rem; line-height: 1.5; word-wrap: break-word; }
+        .msg.user { background-color: var(--accent); color: white; align-self: flex-end; border-bottom-right-radius: 2px; }
+        .msg.ai { background-color: var(--bg-body); border: 1px solid var(--border-color); color: var(--text-main); align-self: flex-start; border-bottom-left-radius: 2px; }
+        .msg p { margin-bottom: 0.5rem; } .msg p:last-child { margin-bottom: 0; }
+        .citation { display: inline-block; background: var(--accent-light); color: var(--accent); border-radius: 4px; padding: 0.1rem 0.4rem; font-size: 0.75rem; font-weight: 600; margin-left: 0.25rem; cursor: pointer; border: 1px solid var(--accent); }
+        .chat-input-area { padding: 1.5rem; border-top: 1px solid var(--border-color); background: var(--bg-panel); }
+        .chat-form { display: flex; gap: 0.5rem; }
+        .chat-form input { border-radius: 24px; }
+        .chat-form button { background: var(--accent); color: white; width: 42px; height: 42px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .chat-form button:hover { background: var(--accent-hover); }
+
+        /* Loading Dots */
+        .loading { display: flex; gap: 0.25rem; padding: 1rem; }
+        .dot { width: 6px; height: 6px; background: var(--accent); border-radius: 50%; animation: bounce 1.4s infinite ease-in-out both; }
+        .dot:nth-child(1) { animation-delay: -0.32s; } .dot:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes bounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
+
+        /* Responsive Mobile Stack */
+        @media (max-width: 1024px) {
+            body { flex-direction: column; overflow-y: auto; height: auto; min-height: 100vh; }
+            #sidebar, #workspace, #chat-studio { width: 100%; min-width: 100%; height: auto; border: none; }
+            #workspace { min-height: 80vh; border-top: 2px solid var(--border-color); border-bottom: 2px solid var(--border-color); }
+            #chat-studio { min-height: 60vh; }
+            .arxiv-paper { padding: 2rem; }
+            .slide-deck { padding: 2rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 1. SOURCES SIDEBAR -->
+    <aside id="sidebar">
+        <div class="sidebar-header">
+            <div class="brand">
+                <h1>NotebookLM // TA</h1>
+                <button id="theme-btn" title="Toggle Theme">🌓</button>
+            </div>
+            <label style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 0.5rem;">API Key (Required for AI)</label>
+            <input type="password" id="api-key" placeholder="Paste Gemini API Key..." />
+        </div>
+        <div class="sidebar-content">
+            <h3 style="font-size: 0.85rem; text-transform: uppercase; color: var(--text-muted); margin-bottom: 1rem;">Sources</h3>
+            <div class="source-box">
+                <span style="font-size: 1.5rem; display: block; margin-bottom: 0.5rem;">📄</span>
+                <strong>Upload Source</strong>
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">.txt or .pdf</p>
+                <input type="file" id="file-input" accept=".txt, .pdf" multiple />
+            </div>
+            <div id="document-list"></div>
+        </div>
+    </aside>
+
+    <!-- 2. MAIN WORKSPACE -->
+    <main id="workspace">
+        <div class="tabs">
+            <button class="tab-btn active" data-target="tab-doc">📄 Document</button>
+            <button class="tab-btn" data-target="tab-deck">📊 Presentation</button>
+            <button class="tab-btn" data-target="tab-video">🎬 Video Simulator</button>
+        </div>
+
+        <!-- Document Viewer Tab -->
+        <div class="tab-content active" id="tab-doc">
+            <div id="arxiv-container" style="width: 100%;">
+                <div class="empty-state">
+                    <span style="font-size: 3rem; margin-bottom: 1rem; display: block;">📚</span>
+                    <h2>No Source Selected</h2>
+                    <p>Upload a document from the sidebar to view it here.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Presentation Slides Tab -->
+        <div class="tab-content" id="tab-deck">
+            <div class="slide-controls">
+                <button class="btn-primary" id="btn-gen-slides">✨ Ask TA to Generate Slides</button>
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <button class="btn-primary" id="btn-prev-slide" disabled>◀</button>
+                    <span id="slide-counter" style="font-weight: 600; min-width: 50px; text-align: center;">0 / 0</span>
+                    <button class="btn-primary" id="btn-next-slide" disabled>▶</button>
+                </div>
+            </div>
+            <div class="slide-deck" id="slide-display">
+                <div class="empty-state" style="margin: auto;">
+                    <h2>Presentation Studio</h2>
+                    <p>Generate educational slides based on the active document.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Video Simulator Tab -->
+        <div class="tab-content" id="tab-video">
+            <div class="sim-container">
+                <div class="sim-header">
+                    <input type="text" id="sim-prompt" placeholder="e.g., 'Balloon inflation experiment' or 'Volcano eruption'" />
+                    <button class="btn-primary" id="btn-gen-sim" style="white-space: nowrap;">✨ Generate Video</button>
+                </div>
+                <div class="sim-stage">
+                    <canvas id="physics-canvas"></canvas>
+                </div>
+                <div class="sim-log" id="sim-log">
+                    > Waiting for simulation parameters...<br>
+                    > Describe an experiment to visualize it dynamically.
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 3. TA CHAT STUDIO -->
+    <aside id="chat-studio">
+        <div class="chat-header">
+            <span>🎓</span> Teaching Assistant AI
+        </div>
+        <div class="chat-messages" id="chat-logs">
+            <div class="msg ai">
+                <p>Hello! I am your Teaching Assistant.</p>
+                <p>Upload your syllabus or reading materials, and I can answer questions, summarize topics, or generate slides and simulations for your students.</p>
+            </div>
+        </div>
+        <div class="chat-input-area">
+            <form class="chat-form" id="chat-form">
+                <input type="text" id="chat-input" placeholder="Ask your TA..." autocomplete="off"/>
+                <button type="submit" title="Send">➤</button>
+            </form>
+        </div>
+    </aside>
+
+    <!-- === JAVASCRIPT LOGIC === -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            
+            // --- STATE & SETUP ---
+            const State = {
+                documents: [], activeDocId: null,
+                chatHistory: [], slides: [], currentSlideIndex: 0,
+                sim: { active: false, type: 'none', particles: [], config: {} }
+            };
+
+            const pdfjsLib = window['pdfjs-dist/build/pdf'];
+            if(pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+
+            // --- THEME ---
+            document.getElementById('theme-btn').addEventListener('click', () => {
+                const isDark = document.body.getAttribute('data-theme') === 'dark';
+                document.body.setAttribute('data-theme', isDark ? 'light' : 'dark');
+            });
+
+            // --- TABS ---
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                    btn.classList.add('active');
+                    document.getElementById(btn.getAttribute('data-target')).classList.add('active');
+                });
+            });
+
+            // --- DOCUMENTS MANAGER ---
+            document.getElementById('file-input').addEventListener('change', async (e) => {
+                const files = e.target.files;
+                if (!files.length) return;
+                for (let file of files) {
+                    const id = Date.now().toString();
+                    let content = "";
+                    if (file.type === "text/plain" || file.name.endsWith('.txt')) {
+                        content = await file.text();
+                        addDoc(id, file.name, content);
+                    } else if (file.type === "application/pdf" || file.name.endsWith('.pdf')) {
+                        if(!pdfjsLib) { alert("PDF library not loaded."); continue; }
+                        try {
+                            const arrayBuffer = await file.arrayBuffer();
+                            const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
+                            for (let i = 1; i <= pdf.numPages; i++) {
+                                const page = await pdf.getPage(i);
+                                const textContent = await page.getTextContent();
+                                content += textContent.items.map(item => item.str).join(' ') + "\n\n";
+                            }
+                            addDoc(id, file.name, content);
+                        } catch (err) { console.error(err); alert("Failed to parse PDF."); }
+                    }
+                }
+                e.target.value = ""; 
+            });
+
+            function addDoc(id, name, content) {
+                State.documents.push({ id, name, content });
+                renderDocList();
+                if (State.documents.length === 1) setActiveDoc(id);
+            }
+
+            function renderDocList() {
+                const list = document.getElementById('document-list');
+                list.innerHTML = '';
+                State.documents.forEach(doc => {
+                    const div = document.createElement('div');
+                    div.className = `doc-item ${doc.id === State.activeDocId ? 'active' : ''}`;
+                    div.innerHTML = `<span class="doc-name">📄 ${doc.name}</span><span class="doc-remove">×</span>`;
+                    div.addEventListener('click', (e) => { if(!e.target.classList.contains('doc-remove')) setActiveDoc(doc.id); });
+                    div.querySelector('.doc-remove').addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        State.documents = State.documents.filter(d => d.id !== doc.id);
+                        if (State.activeDocId === doc.id) setActiveDoc(State.documents.length ? State.documents[0].id : null);
+                        renderDocList();
+                    });
+                    list.appendChild(div);
+                });
+            }
+
+            function setActiveDoc(id) {
+                State.activeDocId = id;
+                renderDocList();
+                const container = document.getElementById('arxiv-container');
+                if (!id) {
+                    container.innerHTML = `<div class="empty-state"><h2>No Source Selected</h2></div>`;
+                    return;
+                }
+                const doc = State.documents.find(d => d.id === id);
+                if(doc) {
+                    const html = doc.content.split('\n\n').filter(p=>p.trim()).map(p => {
+                        return p.length < 100 && !p.includes('.') ? `<h2>${escapeHTML(p)}</h2>` : `<p>${escapeHTML(p)}</p>`;
+                    }).join('');
+                    container.innerHTML = `<div class="arxiv-paper"><h1>${escapeHTML(doc.name)}</h1>${html}</div>`;
+                }
+            }
+
+            function escapeHTML(str) { return str.replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag])); }
+            
+            // Global citation click handler
+            window.loadSource = function(name) {
+                const doc = State.documents.find(d => d.name === name);
+                if(doc) { setActiveDoc(doc.id); document.querySelector('[data-target="tab-doc"]').click(); }
+            };
+
+            // --- API HELPER ---
+            async function callGeminiJSON(systemPrompt, userText, schema) {
+                const apiKey = document.getElementById('api-key').value.trim();
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+                
+                const payload = {
+                    contents: [{ role: "user", parts: [{ text: userText }] }],
+                    systemInstruction: { parts: [{ text: systemPrompt }] },
+                    generationConfig: { responseMimeType: "application/json", responseSchema: schema }
+                };
+
+                const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                if(!res.ok) throw new Error("API Request Failed");
+                const data = await res.json();
+                return JSON.parse(data.candidates[0].content.parts[0].text);
+            }
+
+            // --- SLIDES GENERATOR ---
+            document.getElementById('btn-gen-slides').addEventListener('click', async () => {
+                if(!State.activeDocId) return alert("Select a document first.");
+                const doc = State.documents.find(d => d.id === State.activeDocId);
+                const btn = document.getElementById('btn-gen-slides');
+                btn.disabled = true; btn.textContent = "Generating...";
+
+                try {
+                    const schema = {
+                        type: "ARRAY", items: { type: "OBJECT", properties: { title: { type: "STRING" }, bullets: { type: "ARRAY", items: { type: "STRING" } } }, required: ["title", "bullets"] }
+                    };
+                    const prompt = `You are a TA. Create a 5-slide educational presentation from this text. Extract key concepts into short bullet points.\n\nTEXT:\n${doc.content.substring(0, 15000)}`;
+                    const result = await callGeminiJSON("Create educational slides.", prompt, schema);
+                    
+                    State.slides = result;
+                    State.currentSlideIndex = 0;
+                    renderSlide();
+                } catch(e) {
+                    alert("Failed to generate slides. Check API key.");
+                }
+                btn.disabled = false; btn.textContent = "✨ Ask TA to Generate Slides";
+            });
+
+            function renderSlide() {
+                if(!State.slides.length) return;
+                const slide = State.slides[State.currentSlideIndex];
+                const list = slide.bullets.map(b => `<li>${escapeHTML(b)}</li>`).join('');
+                document.getElementById('slide-display').innerHTML = `<h2 class="slide-title">${escapeHTML(slide.title)}</h2><div class="slide-body"><ul>${list}</ul></div>`;
+                document.getElementById('slide-counter').textContent = `${State.currentSlideIndex + 1} / ${State.slides.length}`;
+                document.getElementById('btn-prev-slide').disabled = State.currentSlideIndex === 0;
+                document.getElementById('btn-next-slide').disabled = State.currentSlideIndex === State.slides.length - 1;
+            }
+
+            document.getElementById('btn-prev-slide').addEventListener('click', () => { if(State.currentSlideIndex > 0) { State.currentSlideIndex--; renderSlide(); } });
+            document.getElementById('btn-next-slide').addEventListener('click', () => { if(State.currentSlideIndex < State.slides.length - 1) { State.currentSlideIndex++; renderSlide(); } });
+
+            // --- VIDEO SIMULATOR (CANVAS PHYSICS) ---
+            const canvas = document.getElementById('physics-canvas');
+            const ctx = canvas.getContext('2d');
+            function resizeCanvas() { canvas.width = canvas.parentElement.clientWidth; canvas.height = canvas.parentElement.clientHeight; }
+            window.addEventListener('resize', resizeCanvas); resizeCanvas();
+
+            document.getElementById('btn-gen-sim').addEventListener('click', async () => {
+                const text = document.getElementById('sim-prompt').value.trim();
+                if(!text) return;
+                const log = document.getElementById('sim-log');
+                log.innerHTML = `> TA AI is designing experiment: "${text}"...<br>> Calculating physics parameters...`;
+
+                try {
+                    const schema = {
+                        type: "OBJECT",
+                        properties: {
+                            scene: { type: "STRING", enum: ["balloon", "volcano", "beaker", "gravity"] },
+                            color: { type: "STRING", description: "Hex color (e.g. #ef4444)" },
+                            speed: { type: "NUMBER", description: "Particle speed multiplier (1 to 10)" },
+                            explanation: { type: "STRING", description: "Scientific explanation of what is happening" }
+                        },
+                        required: ["scene", "color", "speed", "explanation"]
+                    };
+                    const config = await callGeminiJSON("You are a physics simulator. Output JSON parameters to render the user's requested experiment visually.", `Experiment: ${text}`, schema);
+                    
+                    State.sim.config = config;
+                    State.sim.type = config.scene;
+                    State.sim.active = true;
+                    log.innerHTML = `> Scene: ${config.scene.toUpperCase()}<br>> Speed: ${config.speed}x<br>> TA Notes: ${config.explanation}`;
+                    
+                    // Init particles
+                    State.sim.particles = Array.from({length: 60}, () => ({
+                        x: Math.random() * canvas.width,
+                        y: State.sim.type === 'volcano' ? canvas.height : Math.random() * canvas.height,
+                        r: Math.random() * 5 + 2,
+                        vx: (Math.random() - 0.5) * 4,
+                        vy: (Math.random() - 0.5) * 4
+                    }));
+                } catch(e) {
+                    log.innerHTML = `> AI Error. Check API Key.`;
+                }
+            });
+
+            function renderPhysics() {
+                if(!State.sim.active) { requestAnimationFrame(renderPhysics); return; }
+                
+                ctx.fillStyle = 'rgba(17, 17, 17, 0.3)'; // Trail effect
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                const c = State.sim.config;
+                const cx = canvas.width / 2;
+                const cy = canvas.height / 2;
+                ctx.fillStyle = c.color;
+
+                State.sim.particles.forEach(p => {
+                    if (State.sim.type === 'balloon') {
+                        // Inflating logic: pull towards center top, random jitter
+                        p.x += (cx - p.x) * 0.05 + (Math.random()-0.5)*c.speed*2;
+                        p.y += (cy - 50 - p.y) * 0.05 + (Math.random()-0.5)*c.speed*2;
+                    } else if (State.sim.type === 'volcano') {
+                        // Gravity arc
+                        p.x += p.vx * c.speed;
+                        p.y += p.vy * c.speed;
+                        p.vy += 0.2; // Gravity
+                        if(p.y > canvas.height) { p.y = canvas.height; p.vy = -p.vy * 0.5; p.vx += (Math.random()-0.5)*2;}
+                    } else if (State.sim.type === 'beaker') {
+                        // Boiling up
+                        p.y -= c.speed * 1.5;
+                        p.x += Math.sin(p.y * 0.05) * 2;
+                        if(p.y < cy) p.y = canvas.height;
+                    } else if (State.sim.type === 'gravity') {
+                        // Orbit center
+                        const dx = cx - p.x; const dy = cy - p.y;
+                        const dist = Math.sqrt(dx*dx + dy*dy) || 1;
+                        p.vx += (dx / dist) * c.speed * 0.1;
+                        p.vy += (dy / dist) * c.speed * 0.1;
+                        p.x += p.vx; p.y += p.vy;
+                    }
+
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+                
+                // Draw containers
+                ctx.strokeStyle = '#fff'; ctx.lineWidth = 3;
+                if(State.sim.type === 'balloon') {
+                    ctx.beginPath(); ctx.arc(cx, cy - 50, 80 + Math.sin(Date.now()*0.005*c.speed)*10, 0, Math.PI*2); ctx.stroke(); // Balloon
+                    ctx.strokeRect(cx - 30, cy + 40, 60, 100); // Flask
+                } else if(State.sim.type === 'beaker') {
+                    ctx.strokeRect(cx - 80, cy, 160, canvas.height - cy);
+                } else if(State.sim.type === 'volcano') {
+                    ctx.beginPath(); ctx.moveTo(cx - 100, canvas.height); ctx.lineTo(cx - 30, canvas.height - 100); ctx.lineTo(cx + 30, canvas.height - 100); ctx.lineTo(cx + 100, canvas.height); ctx.stroke();
+                }
+
+                requestAnimationFrame(renderPhysics);
+            }
+            renderPhysics();
+
+            // --- TA CHAT LOGIC ---
+            const chatForm = document.getElementById('chat-form');
+            const chatInput = document.getElementById('chat-input');
+            const chatLogs = document.getElementById('chat-logs');
+
+            function appendMsg(role, html, id=null) {
+                const div = document.createElement('div');
+                div.className = `msg ${role}`;
+                if(id) div.id = id;
+                div.innerHTML = html;
+                chatLogs.appendChild(div);
+                chatLogs.scrollTop = chatLogs.scrollHeight;
+            }
+
+            chatForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const text = chatInput.value.trim();
+                const apiKey = document.getElementById('api-key').value.trim();
+                if(!text) return;
+                
+                appendMsg('user', escapeHTML(text));
+                chatInput.value = '';
+                const loadId = 'load-' + Date.now();
+                appendMsg('ai', `<div class="loading"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>`, loadId);
+
+                // Build context from documents
+                let context = State.documents.map(d => `FILE: ${d.name}\n${d.content}`).join('\n\n');
+                let sysPrompt = `You are an expert Teaching Assistant. Answer questions based ONLY on the provided sources. If answering from a source, append [Source: filename.ext] at the end of the claim.\n\nSOURCES:\n${context}`;
+
+                State.chatHistory.push({ role: "user", parts: [{ text }] });
+
+                try {
+                    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+                    const payload = {
+                        contents: State.chatHistory,
+                        systemInstruction: { parts: [{ text: sysPrompt }] }
+                    };
+                    
+                    const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                    if(!res.ok) throw new Error("API Request Failed. Check API Key.");
+                    
+                    const data = await res.json();
+                    const replyText = data.candidates[0].content.parts[0].text;
+                    
+                    State.chatHistory.push({ role: "model", parts: [{ text: replyText }] });
+                    
+                    // Format response (bolding, paragraphs, citations)
+                    let formatted = escapeHTML(replyText)
+                        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                        .split('\n').filter(l=>l.trim()).map(l => `<p>${l}</p>`).join('')
+                        .replace(/\[Source:\s*(.*?)\]/g, (m, p1) => `<span class="citation" onclick="loadSource('${p1}')">[Source: ${p1}]</span>`);
+                    
+                    document.getElementById(loadId).remove();
+                    appendMsg('ai', formatted);
+                } catch(err) {
+                    State.chatHistory.pop(); // Revert user message on fail
+                    document.getElementById(loadId).remove();
+                    appendMsg('ai', `<span style="color:#ef4444;">Error: ${err.message}</span>`);
+                }
+            });
+
+        });
+    </script>
+</body>
+</html>
