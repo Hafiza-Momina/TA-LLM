@@ -3,10 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EduAssist - AI Teacher Studio</title>
+    <title>Educator AI - NotebookLM Style Assistant</title>
     
-    <!-- Tailwind CSS -->
+    <!-- Dependencies via CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Configuration for PDF.js -->
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    </script>
+
+    <!-- Tailwind Config for Theme -->
     <script>
         tailwind.config = {
             darkMode: 'class',
@@ -16,333 +27,422 @@
                         pink: {
                             50: '#fdf2f8',
                             100: '#fce7f3',
+                            200: '#fbcfe8',
+                            300: '#f9a8d4',
+                            400: '#f472b6',
                             500: '#ec4899',
                             600: '#db2777',
                             700: '#be185d',
+                            800: '#9d174d',
                             900: '#831843',
                         },
-                        notebook: {
-                            bg: '#f8f9fa',
-                            panel: '#ffffff',
-                            darkBg: '#121212',
-                            darkPanel: '#1e1e1e'
-                        }
-                    },
-                    fontFamily: {
-                        sans: ['Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
-                        serif: ['Merriweather', 'ui-serif', 'Georgia', 'Cambria', 'Times New Roman', 'Times', 'serif'],
+                        darkBg: '#0f172a',
+                        darkPanel: '#1e293b'
                     }
                 }
             }
         }
     </script>
 
-    <!-- Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
-
-    <!-- Markdown Parser -->
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-
-    <!-- PDF.js for parsing -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <script>pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
-
-    <!-- Vis.js for Knowledge Graph -->
-    <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
-
-    <!-- Chart.js for Presentations -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
     <style>
-        /* Custom Scrollbar */
+        /* Custom Styles & Overrides */
+        body { transition: background-color 0.3s, color 0.3s; }
+        .markdown-body { font-family: ui-sans-serif, system-ui, sans-serif; line-height: 1.6; }
+        .markdown-body h1, .markdown-body h2, .markdown-body h3 { font-weight: 600; margin-top: 1em; margin-bottom: 0.5em; color: var(--tw-prose-headings); }
+        .markdown-body p { margin-bottom: 1em; }
+        .markdown-body ul { list-style-type: disc; padding-left: 1.5em; margin-bottom: 1em; }
+        .markdown-body ol { list-style-type: decimal; padding-left: 1.5em; margin-bottom: 1em; }
+        .markdown-body strong { font-weight: 600; color: #ec4899; }
+        .markdown-body code { background-color: rgba(128,128,128,0.1); padding: 0.2em 0.4em; border-radius: 0.25rem; font-family: monospace; font-size: 0.9em; }
+        .markdown-body pre code { background: transparent; padding: 0; }
+        .markdown-body pre { background-color: rgba(0,0,0,0.05); padding: 1em; border-radius: 0.5rem; overflow-x: auto; margin-bottom: 1em; }
+        
+        .dark .markdown-body h1, .dark .markdown-body h2, .dark .markdown-body h3 { color: #fbcfe8; }
+        .dark .markdown-body strong { color: #f472b6; }
+        .dark .markdown-body pre { background-color: rgba(255,255,255,0.05); }
+
+        /* Loader */
+        .loader {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #ec4899;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        .dark .loader { border: 3px solid #333; border-top: 3px solid #f472b6; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Scrollbar */
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
         .dark ::-webkit-scrollbar-thumb { background: #475569; }
-        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-        
-        /* Prosemirror/Markdown styling */
-        .prose p { margin-bottom: 1em; }
-        .prose h1, .prose h2, .prose h3 { color: inherit; font-weight: 600; margin-top: 1.5em; margin-bottom: 0.5em; }
-        .prose ul { list-style-type: disc; padding-left: 1.5em; margin-bottom: 1em; }
-        .prose ol { list-style-type: decimal; padding-left: 1.5em; margin-bottom: 1em; }
-        .prose strong { font-weight: bold; color: inherit; }
-        
-        #network-canvas { width: 100%; height: 500px; border: 1px solid #e5e7eb; border-radius: 0.5rem; }
-        .dark #network-canvas { border-color: #374151; }
+        ::-webkit-scrollbar-thumb:hover { background: #ec4899; }
 
-        /* Loader */
-        .loader {
-            border: 3px solid #f3f3f3; border-top: 3px solid #db2777; border-radius: 50%;
-            width: 24px; height: 24px; animation: spin 1s linear infinite;
-        }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        /* Slide Transition */
+        .slide-container { position: relative; overflow: hidden; height: 100%; }
+        .slide { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; transition: opacity 0.5s ease-in-out; pointer-events: none; }
+        .slide.active { opacity: 1; pointer-events: auto; }
+        
+        #network-graph { width: 100%; height: 100%; border-radius: 0.5rem; }
     </style>
 </head>
-<body class="bg-notebook-bg dark:bg-notebook-darkBg text-gray-900 dark:text-gray-100 font-sans h-screen flex flex-col overflow-hidden transition-colors duration-200">
+<body class="bg-gray-50 text-gray-900 dark:bg-darkBg dark:text-gray-100 h-screen flex flex-col overflow-hidden font-sans">
 
     <!-- Navbar -->
-    <nav class="border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-notebook-darkPanel flex items-center justify-between px-6 py-3 shrink-0 shadow-sm z-10">
-        <div class="flex items-center gap-3">
-            <div class="bg-pink-600 text-white p-1.5 rounded-lg">
-                <i data-lucide="book-open" class="w-5 h-5"></i>
+    <nav class="bg-white dark:bg-darkPanel border-b border-pink-200 dark:border-pink-900 shadow-sm z-10 flex-shrink-0">
+        <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-pink-400 to-pink-600 flex items-center justify-center text-white shadow-lg">
+                        <i class="fa-solid fa-graduation-cap text-xl"></i>
+                    </div>
+                    <span class="font-bold text-xl tracking-tight text-pink-600 dark:text-pink-400">Educator AI</span>
+                </div>
+                
+                <div class="flex items-center gap-4 flex-1 justify-end">
+                    <div class="relative w-64 md:w-96">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fa-solid fa-key text-gray-400"></i>
+                        </div>
+                        <input type="password" id="apiKeyInput" placeholder="Enter Gemini API Key..." 
+                            class="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg leading-5 bg-white dark:bg-darkBg placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 sm:text-sm transition-colors">
+                    </div>
+                    <button id="themeToggle" class="p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800 transition-colors">
+                        <i class="fa-solid fa-moon text-xl hidden dark:block"></i>
+                        <i class="fa-solid fa-sun text-xl block dark:hidden"></i>
+                    </button>
+                </div>
             </div>
-            <h1 class="text-xl font-semibold tracking-tight">EduAssist <span class="text-sm font-normal text-gray-500 dark:text-gray-400">Studio</span></h1>
-        </div>
-        
-        <div class="flex items-center gap-4">
-            <button id="theme-toggle" class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-                <i data-lucide="moon" class="w-5 h-5 dark:hidden"></i>
-                <i data-lucide="sun" class="w-5 h-5 hidden dark:block text-yellow-400"></i>
-            </button>
         </div>
     </nav>
 
-    <!-- Main Content Layout -->
-    <div class="flex flex-1 overflow-hidden">
+    <!-- Main Content -->
+    <main class="flex-1 flex overflow-hidden">
         
-        <!-- Left Sidebar: Sources -->
-        <aside class="w-56 border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-notebook-darkPanel flex flex-col shrink-0 transition-all">
-            <div class="p-4 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center">
-                <h2 class="font-semibold text-sm uppercase tracking-wider text-gray-500 dark:text-gray-400">Sources</h2>
-                <label for="file-upload" class="cursor-pointer text-pink-600 hover:text-pink-700 dark:text-pink-500 dark:hover:text-pink-400 p-1">
-                    <i data-lucide="plus-circle" class="w-5 h-5"></i>
-                </label>
-                <input id="file-upload" type="file" accept="application/pdf" class="hidden" />
-            </div>
-            <div id="sources-list" class="flex-1 overflow-y-auto p-3 space-y-2">
-                <div class="text-sm text-gray-500 dark:text-gray-400 text-center mt-4 p-4 italic">
-                    Upload a PDF document to begin.
-                </div>
-            </div>
-        </aside>
-
-        <!-- Center Panel: PDF Viewer -->
-        <main class="flex-1 border-r border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-[#181818] flex flex-col relative transition-all">
-            <div class="absolute top-4 right-4 z-10 shadow-sm">
-                <span class="bg-white/90 dark:bg-black/80 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 font-medium text-xs px-3 py-1.5 rounded-full backdrop-blur-md shadow-sm">Document Viewer</span>
-            </div>
-            <div id="pdf-viewer-container" class="flex-1 w-full h-full flex items-center justify-center text-gray-400 overflow-y-auto">
-                <div class="text-center" id="pdf-placeholder">
-                    <i data-lucide="file-text" class="w-16 h-16 mx-auto mb-4 opacity-50"></i>
-                    <p>No document selected</p>
-                </div>
-            </div>
-            <!-- Hidden container to store extracted text -->
-            <div id="extracted-text-storage" class="hidden"></div>
-        </main>
-
-        <!-- Right Panel: Studio Workspace -->
-        <aside class="w-[380px] bg-white dark:bg-notebook-darkPanel flex flex-col shrink-0 shadow-[-4px_0_15px_-3px_rgba(0,0,0,0.05)] z-20 transition-all">
+        <!-- Left Pane: Source Viewer -->
+        <section class="w-1/2 flex flex-col border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-darkPanel relative">
             
-            <!-- Workspace Tabs -->
-            <div class="flex border-b border-gray-200 dark:border-gray-800 px-2 pt-2 bg-gray-50/50 dark:bg-gray-900/50 overflow-x-auto hide-scrollbar">
-                <button class="tab-btn active px-4 py-2.5 text-sm font-medium border-b-2 border-pink-600 text-pink-600 dark:text-pink-500 whitespace-nowrap transition-colors" data-target="tab-chat">Chat</button>
-                <button class="tab-btn px-4 py-2.5 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 whitespace-nowrap transition-colors" data-target="tab-mcq">MCQs</button>
-                <button class="tab-btn px-4 py-2.5 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 whitespace-nowrap transition-colors" data-target="tab-graph">Knowledge Graph</button>
-                <button class="tab-btn px-4 py-2.5 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 whitespace-nowrap transition-colors" data-target="tab-presentation">Presentation</button>
-                <button class="tab-btn px-4 py-2.5 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 whitespace-nowrap transition-colors" data-target="tab-experiment">Experiment</button>
+            <!-- Source Header -->
+            <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-slate-800/50">
+                <h2 class="text-sm font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Source Material</h2>
+                <div class="relative">
+                    <input type="file" id="fileUpload" accept=".pdf,.txt" class="hidden">
+                    <button onclick="document.getElementById('fileUpload').click()" class="bg-pink-100 text-pink-700 hover:bg-pink-200 dark:bg-pink-900/30 dark:text-pink-300 dark:hover:bg-pink-900/50 px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2">
+                        <i class="fa-solid fa-upload"></i> Upload PDF/Text
+                    </button>
+                </div>
             </div>
 
-            <!-- Tab Contents -->
-            <div class="flex-1 overflow-y-auto relative">
+            <!-- Source Viewer Area -->
+            <div id="sourceViewer" class="flex-1 overflow-auto bg-gray-100 dark:bg-[#0f172a] relative">
+                <!-- Initial State -->
+                <div id="emptySourceState" class="absolute inset-0 flex flex-col items-center justify-center text-gray-400">
+                    <i class="fa-regular fa-file-pdf text-6xl mb-4 text-gray-300 dark:text-gray-600"></i>
+                    <p>No document uploaded.</p>
+                    <p class="text-sm">Upload a PDF or Text file to begin.</p>
+                </div>
                 
-                <!-- Chat Tab -->
-                <div id="tab-chat" class="tab-content h-full flex flex-col">
-                    <div id="chat-history" class="flex-1 overflow-y-auto p-4 space-y-4 prose dark:prose-invert max-w-none text-sm">
-                        <div class="flex gap-3">
-                            <div class="w-8 h-8 rounded-full bg-pink-100 dark:bg-pink-900 flex items-center justify-center shrink-0">
-                                <i data-lucide="bot" class="w-5 h-5 text-pink-600 dark:text-pink-400"></i>
+                <!-- Native PDF Viewer (Rendered via PDF.js) -->
+                <div id="pdfVisualContainer" class="hidden w-full flex-col items-center py-6 px-4 min-h-full"></div>
+                
+                <!-- Text Viewer (Fallback/Text files) -->
+                <div id="textView" class="hidden p-8 max-w-3xl mx-auto text-gray-800 dark:text-gray-200 whitespace-pre-wrap font-serif leading-relaxed"></div>
+                
+                <!-- Processing Overlay -->
+                <div id="processingOverlay" class="hidden absolute inset-0 bg-white/80 dark:bg-darkBg/80 flex flex-col items-center justify-center z-10 backdrop-blur-sm">
+                    <div class="loader mb-4"></div>
+                    <p class="text-pink-600 dark:text-pink-400 font-medium">Reading Document...</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Right Pane: AI Workspace -->
+        <section class="w-1/2 flex flex-col bg-gray-50 dark:bg-darkBg">
+            
+            <!-- Tools Navigation -->
+            <div class="px-4 py-2 bg-white dark:bg-darkPanel border-b border-gray-200 dark:border-gray-700">
+                <nav class="flex space-x-2" aria-label="Tabs">
+                    <button onclick="switchTab('chat')" id="tab-chat" class="tab-btn active px-4 py-2 rounded-md text-sm font-medium bg-pink-100 text-pink-700 dark:bg-pink-900/40 dark:text-pink-300 transition-colors">
+                        <i class="fa-regular fa-comments mr-2"></i> Chat
+                    </button>
+                    <button onclick="switchTab('presentation')" id="tab-presentation" class="tab-btn px-4 py-2 rounded-md text-sm font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-800 transition-colors">
+                        <i class="fa-solid fa-person-chalkboard mr-2"></i> Presentation
+                    </button>
+                    <button onclick="switchTab('graph')" id="tab-graph" class="tab-btn px-4 py-2 rounded-md text-sm font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-800 transition-colors">
+                        <i class="fa-solid fa-project-diagram mr-2"></i> Knowledge Graph
+                    </button>
+                    <button onclick="switchTab('mcq')" id="tab-mcq" class="tab-btn px-4 py-2 rounded-md text-sm font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-800 transition-colors">
+                        <i class="fa-solid fa-list-check mr-2"></i> MCQs
+                    </button>
+                </nav>
+            </div>
+
+            <!-- Workspace Content Areas -->
+            <div class="flex-1 relative overflow-hidden">
+                
+                <!-- Chat Interface -->
+                <div id="view-chat" class="absolute inset-0 flex flex-col view-panel">
+                    <div id="chatHistory" class="flex-1 overflow-y-auto p-4 space-y-6">
+                        <!-- Welcome Message -->
+                        <div class="flex gap-4">
+                            <div class="w-8 h-8 rounded-full bg-pink-500 flex items-center justify-center text-white flex-shrink-0">
+                                <i class="fa-solid fa-robot text-sm"></i>
                             </div>
-                            <div class="bg-gray-100 dark:bg-gray-800 p-3 rounded-2xl rounded-tl-none">
-                                Hello! I'm your Teacher Assistant. Upload a document and ask me anything about it.
+                            <div class="bg-white dark:bg-darkPanel border border-gray-200 dark:border-gray-700 rounded-2xl rounded-tl-none px-4 py-3 shadow-sm max-w-[85%]">
+                                <p class="text-sm">Hello! Upload a document and I can help you understand it, create presentations, build knowledge graphs, or generate quizzes. How can I assist you today?</p>
                             </div>
                         </div>
                     </div>
-                    <div class="p-4 border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-notebook-darkPanel">
-                        <form id="chat-form" class="relative">
-                            <input type="text" id="chat-input" placeholder="Ask about the document..." 
-                                class="w-full pl-4 pr-12 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-500 transition-all">
-                            <button type="submit" class="absolute right-2 top-1.5 p-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors disabled:opacity-50" id="chat-submit-btn">
-                                <i data-lucide="send" class="w-4 h-4"></i>
+                    
+                    <!-- Chat Input -->
+                    <div class="p-4 bg-white dark:bg-darkPanel border-t border-gray-200 dark:border-gray-700">
+                        <form id="chatForm" class="flex gap-2 relative">
+                            <input type="text" id="chatInput" placeholder="Ask a question about the document..." 
+                                class="flex-1 pl-4 pr-12 py-3 border border-gray-300 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-darkBg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-shadow">
+                            <button type="submit" id="sendBtn" class="absolute right-2 top-2 bottom-2 aspect-square bg-pink-500 hover:bg-pink-600 text-white rounded-lg flex items-center justify-center transition-colors disabled:opacity-50">
+                                <i class="fa-solid fa-paper-plane"></i>
                             </button>
                         </form>
                     </div>
                 </div>
 
-                <!-- MCQ Tab -->
-                <div id="tab-mcq" class="tab-content hidden h-full flex flex-col p-4">
-                    <div class="flex justify-between items-center mb-4">
-                        <h3 class="font-semibold">Quiz Generator</h3>
-                        <button id="generate-mcq-btn" class="bg-pink-600 hover:bg-pink-700 text-white px-3 py-1.5 rounded text-sm flex items-center gap-2">
-                            <i data-lucide="zap" class="w-4 h-4"></i> Generate
-                        </button>
-                    </div>
-                    <div id="mcq-container" class="flex-1 overflow-y-auto space-y-6">
-                        <p class="text-sm text-gray-500 text-center mt-10">Click generate to create MCQs based on the document.</p>
-                    </div>
-                </div>
-
-                <!-- Knowledge Graph Tab -->
-                <div id="tab-graph" class="tab-content hidden h-full flex flex-col p-4">
-                    <div class="flex justify-between items-center mb-4">
-                        <h3 class="font-semibold">Concept Mapping</h3>
-                        <button id="generate-graph-btn" class="bg-pink-600 hover:bg-pink-700 text-white px-3 py-1.5 rounded text-sm flex items-center gap-2">
-                            <i data-lucide="git-merge" class="w-4 h-4"></i> Generate
-                        </button>
-                    </div>
-                    <div id="network-canvas" class="flex-1 bg-gray-50 dark:bg-gray-800 relative">
-                        <div id="graph-loading" class="hidden absolute inset-0 bg-white/80 dark:bg-gray-900/80 flex flex-col items-center justify-center z-10">
-                            <div class="loader mb-2"></div>
-                            <p class="text-sm text-gray-500">Analyzing concepts...</p>
+                <!-- Presentation Interface -->
+                <div id="view-presentation" class="absolute inset-0 hidden flex flex-col bg-gray-100 dark:bg-darkBg view-panel">
+                    <div class="p-4 flex justify-between items-center border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-darkPanel">
+                        <div>
+                            <h3 class="font-bold">Presentation Builder</h3>
+                            <p class="text-xs text-gray-500">Generate slides from context.</p>
                         </div>
-                        <!-- Vis.js renders here -->
+                        <button onclick="generateFeature('presentation')" class="bg-pink-500 hover:bg-pink-600 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i> Generate Slides
+                        </button>
+                    </div>
+                    <div class="flex-1 relative flex items-center justify-center p-8">
+                        
+                        <!-- Initial/Loading State -->
+                        <div id="presentationState" class="text-center text-gray-400">
+                            <i class="fa-solid fa-chalkboard text-5xl mb-4 opacity-50"></i>
+                            <p>Click Generate to create slides from the document.</p>
+                        </div>
+
+                        <!-- Slides Carousel container -->
+                        <div id="slideContainer" class="w-full max-w-2xl aspect-[16/9] bg-white dark:bg-slate-800 rounded-xl shadow-2xl relative hidden slide-container overflow-hidden border border-gray-200 dark:border-gray-700">
+                            <!-- Slides injected here -->
+                        </div>
+
+                        <!-- Controls -->
+                        <div id="slideControls" class="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex items-center gap-4 bg-white/90 dark:bg-darkPanel/90 backdrop-blur-md px-4 py-2 rounded-full shadow-lg hidden z-10 border border-gray-200 dark:border-gray-700">
+                            <button onclick="prevSlide()" class="p-2 text-gray-600 hover:text-pink-500 dark:text-gray-300"><i class="fa-solid fa-chevron-left"></i></button>
+                            <span id="slideIndicator" class="text-sm font-medium min-w-[3rem] text-center">1 / 1</span>
+                            <button onclick="nextSlide()" class="p-2 text-gray-600 hover:text-pink-500 dark:text-gray-300"><i class="fa-solid fa-chevron-right"></i></button>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Presentation Tab -->
-                <div id="tab-presentation" class="tab-content hidden h-full flex flex-col p-4">
-                    <div class="flex justify-between items-center mb-4">
-                        <h3 class="font-semibold">Slide Deck</h3>
-                        <button id="generate-pres-btn" class="bg-pink-600 hover:bg-pink-700 text-white px-3 py-1.5 rounded text-sm flex items-center gap-2">
-                            <i data-lucide="projector" class="w-4 h-4"></i> Create
+                <!-- Knowledge Graph Interface -->
+                <div id="view-graph" class="absolute inset-0 hidden flex flex-col view-panel bg-white dark:bg-darkPanel">
+                    <div class="p-4 flex justify-between items-center border-b border-gray-200 dark:border-gray-700 z-10 bg-white dark:bg-darkPanel shadow-sm">
+                        <div>
+                            <h3 class="font-bold">Knowledge Graph</h3>
+                            <p class="text-xs text-gray-500">Visualize concepts and relationships.</p>
+                        </div>
+                        <button onclick="generateFeature('graph')" class="bg-pink-500 hover:bg-pink-600 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2">
+                            <i class="fa-solid fa-diagram-project"></i> Generate Graph
                         </button>
                     </div>
-                    <div id="presentation-container" class="flex-1 overflow-y-auto space-y-6 pb-10">
-                        <p class="text-sm text-gray-500 text-center mt-10">Generate a presentation outline with data visualization.</p>
+                    <div class="flex-1 relative">
+                        <div id="graphState" class="absolute inset-0 flex flex-col items-center justify-center text-gray-400 z-0">
+                            <i class="fa-solid fa-circle-nodes text-5xl mb-4 opacity-50"></i>
+                            <p>Click Generate to build a map of concepts.</p>
+                        </div>
+                        <div id="network-graph" class="absolute inset-0 z-0"></div>
                     </div>
                 </div>
 
-                <!-- Experiment Tab -->
-                <div id="tab-experiment" class="tab-content hidden h-full flex flex-col p-4">
-                    <div class="flex justify-between items-center mb-4">
-                        <h3 class="font-semibold">Lab Guide</h3>
-                        <button id="generate-exp-btn" class="bg-pink-600 hover:bg-pink-700 text-white px-3 py-1.5 rounded text-sm flex items-center gap-2">
-                            <i data-lucide="flask-conical" class="w-4 h-4"></i> Design
+                <!-- MCQ Interface -->
+                <div id="view-mcq" class="absolute inset-0 hidden flex flex-col view-panel bg-gray-50 dark:bg-darkBg">
+                    <div class="p-4 flex justify-between items-center border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-darkPanel shadow-sm">
+                        <div>
+                            <h3 class="font-bold">Knowledge Check (MCQs)</h3>
+                            <p class="text-xs text-gray-500">Test understanding with generated quizzes.</p>
+                        </div>
+                        <button onclick="generateFeature('mcq')" class="bg-pink-500 hover:bg-pink-600 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2">
+                            <i class="fa-solid fa-list-ol"></i> Generate Quiz
                         </button>
                     </div>
-                    <div id="experiment-container" class="flex-1 overflow-y-auto space-y-8 pb-10 prose dark:prose-invert text-sm">
-                        <p class="text-sm text-gray-500 text-center mt-10 no-prose">Generate a step-by-step visual experiment based on document concepts.</p>
+                    <div class="flex-1 overflow-y-auto p-6">
+                        <div id="mcqState" class="h-full flex flex-col items-center justify-center text-gray-400">
+                            <i class="fa-regular fa-circle-check text-5xl mb-4 opacity-50"></i>
+                            <p>Click Generate to create a quiz based on the text.</p>
+                        </div>
+                        <div id="mcqContainer" class="max-w-3xl mx-auto space-y-8 pb-10 hidden">
+                            <!-- MCQs injected here -->
+                        </div>
                     </div>
                 </div>
 
             </div>
-        </aside>
-    </div>
+        </section>
+    </main>
 
-    <!-- Global Loading Overlay -->
-    <div id="global-loader" class="fixed inset-0 bg-black/50 z-50 hidden flex-col items-center justify-center backdrop-blur-sm">
-        <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-xl flex flex-col items-center max-w-sm text-center">
-            <div class="loader mb-4 w-10 h-10 border-4"></div>
-            <h3 class="font-bold text-lg mb-1" id="loader-title">Processing</h3>
-            <p class="text-sm text-gray-500 dark:text-gray-400" id="loader-desc">Please wait while the AI analyzes the data.</p>
+    <!-- Global Loading Modal for Generation Tasks -->
+    <div id="generationModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center">
+        <div class="bg-white dark:bg-darkPanel p-8 rounded-2xl shadow-2xl flex flex-col items-center max-w-sm w-full border border-pink-200 dark:border-pink-900">
+            <div class="loader mb-6 w-12 h-12 border-4"></div>
+            <h3 id="generationTitle" class="text-xl font-bold mb-2">Analyzing Data...</h3>
+            <p id="generationDesc" class="text-gray-500 text-center text-sm">Our AI is reading the document and crafting the content. This might take a few seconds.</p>
         </div>
     </div>
 
-    <!-- Message Modal -->
-    <div id="message-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/50 backdrop-blur-sm">
-        <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-xl max-w-md w-full mx-4 transform transition-all">
-            <h3 id="modal-title" class="text-lg font-bold mb-2 text-gray-900 dark:text-white">Notice</h3>
-            <p id="modal-body" class="text-sm text-gray-600 dark:text-gray-300 mb-6"></p>
-            <div class="flex justify-end">
-                <button onclick="document.getElementById('message-modal').classList.add('hidden')" class="bg-pink-600 text-white px-4 py-2 rounded hover:bg-pink-700">Close</button>
-            </div>
-        </div>
+    <!-- Error Toast -->
+    <div id="toast" class="fixed bottom-4 right-4 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg transform translate-y-20 opacity-0 transition-all duration-300 z-50 flex items-center gap-3">
+        <i class="fa-solid fa-circle-exclamation"></i>
+        <span id="toastMessage">An error occurred.</span>
     </div>
 
+    <!-- Logic -->
     <script>
-        // Initialize Lucide Icons
-        lucide.createIcons();
+        // --- State Management ---
+        const State = {
+            documentText: "",
+            fileName: "",
+            chatHistory: [],
+            slides: [],
+            currentSlide: 0,
+            network: null // Vis.js instance
+        };
 
-        // State variables
-        let documentContext = "";
-        let currentDocumentName = "";
-        let networkGraph = null;
-        let isProcessing = false;
-
-        // UI Elements
-        const themeToggle = document.getElementById('theme-toggle');
-        const fileUpload = document.getElementById('file-upload');
-        const sourcesList = document.getElementById('sources-list');
-        const pdfViewerContainer = document.getElementById('pdf-viewer-container');
-        const globalLoader = document.getElementById('global-loader');
-        const loaderTitle = document.getElementById('loader-title');
-        const loaderDesc = document.getElementById('loader-desc');
-        const tabBtns = document.querySelectorAll('.tab-btn');
-        const tabContents = document.querySelectorAll('.tab-content');
-
-        // Helper: Show Modal
-        function showMessage(title, message) {
-            document.getElementById('modal-title').textContent = title;
-            document.getElementById('modal-body').textContent = message;
-            document.getElementById('message-modal').classList.remove('hidden');
-        }
-
-        // Helper: Show/Hide Loader
-        function setLoader(show, title = "Processing", desc = "Please wait...") {
-            if (show) {
-                loaderTitle.textContent = title;
-                loaderDesc.textContent = desc;
-                globalLoader.classList.remove('hidden');
-                globalLoader.classList.add('flex');
-                isProcessing = true;
-            } else {
-                globalLoader.classList.add('hidden');
-                globalLoader.classList.remove('flex');
-                isProcessing = false;
-            }
-        }
-
-        // Theme Management
-        function toggleTheme() {
-            document.documentElement.classList.toggle('dark');
-            const isDark = document.documentElement.classList.contains('dark');
-            localStorage.setItem('theme', isDark ? 'dark' : 'light');
-            // Redraw graph and charts if they exist to match theme
-            if (networkGraph) networkGraph.redraw();
-        }
-
-        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-            document.documentElement.classList.add('dark');
-        }
-        themeToggle.addEventListener('click', toggleTheme);
-
-        // Tab Management
-        tabBtns.forEach(btn => {
-            btn.addEventListener('click', () => {
-                const target = btn.getAttribute('data-target');
-                
-                tabBtns.forEach(b => {
-                    b.classList.remove('border-pink-600', 'text-pink-600', 'dark:text-pink-500');
-                    b.classList.add('border-transparent', 'text-gray-500');
-                });
-                btn.classList.remove('border-transparent', 'text-gray-500');
-                btn.classList.add('border-pink-600', 'text-pink-600', 'dark:text-pink-500');
-
-                tabContents.forEach(c => c.classList.add('hidden'));
-                document.getElementById(target).classList.remove('hidden');
+        // --- Model Config ---
+        const MODEL_NAME = "gemini-2.5-flash-preview-09-2025";
+        
+        // --- Initialization & Event Listeners ---
+        document.addEventListener('DOMContentLoaded', () => {
+            // Theme toggle
+            const themeBtn = document.getElementById('themeToggle');
+            themeBtn.addEventListener('click', () => {
+                document.documentElement.classList.toggle('dark');
             });
+
+            // File Upload
+            const fileInput = document.getElementById('fileUpload');
+            fileInput.addEventListener('change', handleFileUpload);
+
+            // Chat Form
+            const chatForm = document.getElementById('chatForm');
+            chatForm.addEventListener('submit', handleChatSubmit);
         });
 
-        // Core AI Call Function with Retry Logic
-        async function callGemini(prompt, schema = null, systemPrompt = "") {
-            const apiKey = "";
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
-            
-            const payload = {
-                contents: [{ parts: [{ text: prompt }] }],
-                systemInstruction: { parts: [{ text: systemPrompt }] }
-            };
+        // --- File Handling (PDF & Text) ---
+        async function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
 
-            if (schema) {
-                payload.generationConfig = {
-                    responseMimeType: "application/json",
-                    responseSchema: schema
-                };
+            State.fileName = file.name;
+            const isPdf = file.type === 'application/pdf';
+            
+            // UI Updates
+            document.getElementById('emptySourceState').classList.add('hidden');
+            const pdfVisualContainer = document.getElementById('pdfVisualContainer');
+            const textView = document.getElementById('textView');
+            const overlay = document.getElementById('processingOverlay');
+            
+            overlay.classList.remove('hidden');
+
+            try {
+                if (isPdf) {
+                    pdfVisualContainer.classList.remove('hidden');
+                    pdfVisualContainer.classList.add('flex');
+                    textView.classList.add('hidden');
+
+                    const arrayBuffer = await file.arrayBuffer();
+                    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                    
+                    // Extract text for LLM context
+                    State.documentText = await extractTextFromPdf(pdf);
+
+                    // Render visually on canvas
+                    renderPdfVisually(pdf);
+                } else {
+                    // Handle text files
+                    pdfVisualContainer.classList.add('hidden');
+                    pdfVisualContainer.classList.remove('flex');
+                    textView.classList.remove('hidden');
+                    const text = await file.text();
+                    textView.textContent = text;
+                    State.documentText = text;
+                }
+                
+                addChatMessage("System", `Successfully loaded document: **${State.fileName}**. You can now chat with it or generate insights.`);
+                
+            } catch (error) {
+                showToast("Failed to read file: " + error.message);
+                console.error(error);
+            } finally {
+                overlay.classList.add('hidden');
+            }
+        }
+
+        async function extractTextFromPdf(pdf) {
+            let fullText = "";
+            
+            for (let i = 1; i <= pdf.numPages; i++) {
+                const page = await pdf.getPage(i);
+                const textContent = await page.getTextContent();
+                const pageText = textContent.items.map(item => item.str).join(" ");
+                fullText += pageText + "\n\n";
+            }
+            return fullText;
+        }
+
+        async function renderPdfVisually(pdf) {
+            const container = document.getElementById('pdfVisualContainer');
+            container.innerHTML = ''; // Clear previous
+            
+            for (let i = 1; i <= pdf.numPages; i++) {
+                const page = await pdf.getPage(i);
+                const viewport = page.getViewport({ scale: 1.5 });
+                
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
+                canvas.className = 'mb-8 w-full max-w-4xl shadow-xl bg-white dark:opacity-95 rounded-sm';
+                
+                container.appendChild(canvas);
+                
+                // Render asynchronously to not block the thread completely
+                page.render({ canvasContext: context, viewport: viewport });
+            }
+        }
+
+        // --- Gemini API Call Wrapper with Retry ---
+        async function callGemini(prompt, systemInstruction = "", expectJson = false) {
+            const apiKey = document.getElementById('apiKeyInput').value.trim();
+            if (!apiKey) {
+                throw new Error("Please enter your Gemini API Key in the top right.");
             }
 
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${apiKey}`;
+            
+            const payload = {
+                contents: [{ parts: [{ text: prompt }] }]
+            };
+
+            if (systemInstruction) {
+                payload.systemInstruction = { parts: [{ text: systemInstruction }] };
+            }
+
+            if (expectJson) {
+                payload.generationConfig = { responseMimeType: "application/json" };
+            }
+
+            // Exponential backoff retry logic
+            const maxRetries = 5;
             const delays = [1000, 2000, 4000, 8000, 16000];
-            for (let i = 0; i < delays.length; i++) {
+
+            for (let i = 0; i < maxRetries; i++) {
                 try {
                     const response = await fetch(url, {
                         method: 'POST',
@@ -350,601 +450,408 @@
                         body: JSON.stringify(payload)
                     });
 
-                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                    
                     const data = await response.json();
-                    const textResult = data.candidates?.[0]?.content?.parts?.[0]?.text;
-                    
-                    if (!textResult) throw new Error("Empty response from API");
-                    
-                    return schema ? JSON.parse(textResult) : textResult;
+
+                    if (!response.ok) {
+                        throw new Error(data.error?.message || "API Request Failed");
+                    }
+
+                    const textResponse = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                    if (!textResponse) throw new Error("Empty response from API");
+
+                    return expectJson ? JSON.parse(textResponse) : textResponse;
 
                 } catch (error) {
-                    if (i === delays.length - 1) {
-                        throw new Error("API call failed: " + error.message);
-                    }
-                    await new Promise(r => setTimeout(r, delays[i]));
+                    if (i === maxRetries - 1) throw error; // Re-throw if last try
+                    await new Promise(res => setTimeout(res, delays[i]));
                 }
             }
         }
 
-        // Image Generation Call
-        async function callImagen(prompt) {
-            const apiKey = "";
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict?key=${apiKey}`;
-            
-            try {
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        instances: [{ prompt: prompt }],
-                        parameters: { sampleCount: 1 }
-                    })
-                });
+        // --- Tab Navigation ---
+        function switchTab(tabId) {
+            // Update buttons
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active', 'bg-pink-100', 'text-pink-700', 'dark:bg-pink-900/40', 'dark:text-pink-300');
+                btn.classList.add('text-gray-500', 'dark:text-gray-400');
+            });
+            const activeBtn = document.getElementById(`tab-${tabId}`);
+            activeBtn.classList.add('active', 'bg-pink-100', 'text-pink-700', 'dark:bg-pink-900/40', 'dark:text-pink-300');
+            activeBtn.classList.remove('text-gray-500', 'dark:text-gray-400');
 
-                if (!response.ok) throw new Error("Image generation failed");
-                const data = await response.json();
-                
-                return `data:image/png;base64,${data.predictions[0].bytesBase64Encoded}`;
-            } catch (error) {
-                console.error("Imagen error:", error);
-                // Fallback placeholder if API fails or quota exceeded
-                return `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" fill="%23f3f4f6"><rect width="100%" height="100%"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="16" fill="%239ca3af">Image Generation Failed/Unavailable</text></svg>`;
+            // Update views
+            document.querySelectorAll('.view-panel').forEach(panel => panel.classList.add('hidden'));
+            document.getElementById(`view-${tabId}`).classList.remove('hidden');
+
+            // Re-render graph if switching to it to fix sizing issues
+            if(tabId === 'graph' && State.network) {
+                setTimeout(() => State.network.fit(), 100);
             }
         }
 
-        // PDF Handling
-        fileUpload.addEventListener('change', async function(e) {
-            const file = e.target.files[0];
-            if (!file) return;
+        // --- Chat Functionality ---
+        async function handleChatSubmit(e) {
+            e.preventDefault();
+            const inputElement = document.getElementById('chatInput');
+            const message = inputElement.value.trim();
+            if (!message) return;
 
-            if (file.type !== 'application/pdf') {
-                showMessage("Invalid File", "Please upload a PDF document.");
+            // UI update: Add User message
+            inputElement.value = '';
+            addChatMessage('User', message);
+            
+            const sendBtn = document.getElementById('sendBtn');
+            sendBtn.disabled = true;
+            sendBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+
+            try {
+                // Construct context
+                let systemContext = "You are a helpful Teacher Assistant. Answer questions based ONLY on the provided document text. If the answer is not in the document, say you cannot find it in the source material.";
+                if (State.documentText) {
+                    systemContext += `\n\n--- DOCUMENT TEXT ---\n${State.documentText.substring(0, 30000)}`; // limit context roughly
+                } else {
+                    systemContext += "\n\nNo document has been uploaded yet. Ask the user to upload one.";
+                }
+
+                // Construct prompt with history
+                let fullPrompt = State.chatHistory.map(msg => `${msg.role}: ${msg.text}`).join('\n');
+                fullPrompt += `\nUser: ${message}\nAssistant:`;
+
+                const responseText = await callGemini(fullPrompt, systemContext, false);
+                
+                addChatMessage('Assistant', responseText);
+                
+                // Save to history
+                State.chatHistory.push({ role: 'User', text: message });
+                State.chatHistory.push({ role: 'Assistant', text: responseText });
+
+            } catch (error) {
+                showToast(error.message);
+                addChatMessage('System', 'Error generating response.');
+            } finally {
+                sendBtn.disabled = false;
+                sendBtn.innerHTML = '<i class="fa-solid fa-paper-plane"></i>';
+            }
+        }
+
+        function addChatMessage(role, text) {
+            const container = document.getElementById('chatHistory');
+            const wrapper = document.createElement('div');
+            wrapper.className = `flex gap-4 ${role === 'User' ? 'flex-row-reverse' : ''}`;
+
+            const iconHtml = role === 'User' 
+                ? `<div class="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 flex-shrink-0"><i class="fa-solid fa-user text-sm"></i></div>`
+                : (role === 'System' 
+                    ? `<div class="w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center text-white flex-shrink-0"><i class="fa-solid fa-triangle-exclamation text-sm"></i></div>`
+                    : `<div class="w-8 h-8 rounded-full bg-pink-500 flex items-center justify-center text-white flex-shrink-0"><i class="fa-solid fa-robot text-sm"></i></div>`);
+
+            const bubbleClass = role === 'User'
+                ? 'bg-pink-600 text-white rounded-2xl rounded-tr-none px-4 py-3 shadow-sm max-w-[85%]'
+                : (role === 'System' 
+                    ? 'bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 rounded-2xl px-4 py-3 text-sm italic shadow-sm max-w-[85%]'
+                    : 'bg-white dark:bg-darkPanel border border-gray-200 dark:border-gray-700 rounded-2xl rounded-tl-none px-4 py-3 shadow-sm max-w-[85%] markdown-body');
+
+            const contentHtml = role === 'System' || role === 'User' ? text : marked.parse(text);
+
+            wrapper.innerHTML = `
+                ${iconHtml}
+                <div class="${bubbleClass}">
+                    ${role === 'Assistant' ? contentHtml : `<p class="text-sm">${contentHtml}</p>`}
+                </div>
+            `;
+            
+            container.appendChild(wrapper);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        // --- Feature Generators (Presentation, Graph, MCQ) ---
+        async function generateFeature(type) {
+            if (!State.documentText) {
+                showToast("Please upload a document first.");
                 return;
             }
 
-            currentDocumentName = file.name;
-            updateSourcesList(file.name);
-            
-            setLoader(true, "Reading Document", "Extracting text and rendering preview...");
+            showModal(`Generating ${type}...`);
 
             try {
-                const arrayBuffer = await file.arrayBuffer();
-                const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-                let fullText = "";
+                let contextText = State.documentText.substring(0, 40000); // Send chunk to avoid massive payloads
 
-                // Configure viewer container for Canvas rendering
-                pdfViewerContainer.innerHTML = ''; // Clear placeholder
-                pdfViewerContainer.classList.remove('items-center', 'justify-center');
-                pdfViewerContainer.classList.add('p-6', 'space-y-6');
-
-                for (let i = 1; i <= pdf.numPages; i++) {
-                    const page = await pdf.getPage(i);
+                if (type === 'presentation') {
+                    const prompt = `Analyze the following text and create a presentation with 5 to 8 slides summarizing the key points.
+                    Output MUST be valid JSON matching this schema:
+                    [
+                        {
+                            "title": "Slide Title",
+                            "points": ["Bullet point 1", "Bullet point 2"],
+                            "chartType": "none" | "bar" | "pie",
+                            "chartData": {"labels": [], "data": []} // Provide simple dummy data if chartType is not none
+                        }
+                    ]
                     
-                    // 1. Render PDF visually using Canvas
-                    const viewport = page.getViewport({ scale: 1.5 });
-                    const canvas = document.createElement('canvas');
-                    canvas.className = "max-w-full h-auto mx-auto shadow-md border border-gray-200 dark:border-gray-700 bg-white rounded";
-                    const context = canvas.getContext('2d');
-                    canvas.height = viewport.height;
-                    canvas.width = viewport.width;
-                    
-                    const renderContext = { canvasContext: context, viewport: viewport };
-                    await page.render(renderContext).promise;
-                    pdfViewerContainer.appendChild(canvas);
+                    Text Context:
+                    ${contextText}`;
 
-                    // 2. Extract Text
-                    const textContent = await page.getTextContent();
-                    const pageText = textContent.items.map(item => item.str).join(' ');
-                    fullText += pageText + "\n\n";
+                    const data = await callGemini(prompt, "You are an expert presentation creator. Return strictly valid JSON array.", true);
+                    renderPresentation(data);
+
+                } else if (type === 'graph') {
+                    const prompt = `Extract the main concepts and their relationships from the text to create a knowledge graph.
+                    Output MUST be valid JSON matching this schema:
+                    {
+                        "nodes": [{"id": "unique_string", "label": "Concept Name", "group": "category_number"}],
+                        "edges": [{"from": "source_id", "to": "target_id", "label": "relationship label"}]
+                    }
+                    Keep it to max 20 nodes for readability. Ensure 'from' and 'to' in edges match node 'id's.
+                    
+                    Text Context:
+                    ${contextText}`;
+
+                    const data = await callGemini(prompt, "You are a data extractor creating knowledge graphs. Return strictly valid JSON object.", true);
+                    renderGraph(data);
+
+                } else if (type === 'mcq') {
+                    const prompt = `Create a 5-question multiple choice quiz based on the core concepts in the text to test reading comprehension.
+                    Output MUST be valid JSON matching this schema:
+                    [
+                        {
+                            "question": "The question text?",
+                            "options": ["Option A", "Option B", "Option C", "Option D"],
+                            "answerIndex": 0, // integer index of correct option (0-3)
+                            "explanation": "Why this is correct."
+                        }
+                    ]
+                    
+                    Text Context:
+                    ${contextText}`;
+
+                    const data = await callGemini(prompt, "You are an expert educator. Return strictly valid JSON array.", true);
+                    renderMCQs(data);
                 }
-
-                documentContext = fullText.trim();
-                
-                // Add system message to chat
-                addChatMessage("system", `Document loaded: **${file.name}**. I've read ${pdf.numPages} pages. What would you like to do?`);
-                
-                // Switch to chat tab automatically
-                tabBtns[0].click();
 
             } catch (error) {
                 console.error(error);
-                showMessage("Parsing Error", "Failed to read the PDF document.");
-                pdfViewerContainer.innerHTML = `<div class="text-red-500 w-full text-center mt-10">Error loading document.</div>`;
+                showToast("Failed to generate: " + error.message);
             } finally {
-                setLoader(false);
+                hideModal();
             }
-        });
-
-        function updateSourcesList(name) {
-            sourcesList.innerHTML = `
-                <div class="flex items-center gap-3 p-3 bg-pink-50 dark:bg-pink-900/20 border border-pink-200 dark:border-pink-800 rounded-lg">
-                    <div class="bg-pink-100 dark:bg-pink-800 p-2 rounded text-pink-600 dark:text-pink-400">
-                        <i data-lucide="file-text" class="w-5 h-5"></i>
-                    </div>
-                    <div class="overflow-hidden">
-                        <p class="text-sm font-medium truncate" title="${name}">${name}</p>
-                        <p class="text-xs text-gray-500">Active Source</p>
-                    </div>
-                </div>
-            `;
-            lucide.createIcons();
         }
 
-        // Chat Logic
-        const chatForm = document.getElementById('chat-form');
-        const chatInput = document.getElementById('chat-input');
-        const chatHistory = document.getElementById('chat-history');
-        const chatSubmitBtn = document.getElementById('chat-submit-btn');
+        // --- Renderers ---
 
-        function addChatMessage(role, text) {
-            const div = document.createElement('div');
-            div.className = 'flex gap-3';
+        // 1. Presentation Renderer
+        function renderPresentation(slidesData) {
+            State.slides = slidesData;
+            State.currentSlide = 0;
             
-            if (role === 'user') {
-                div.classList.add('justify-end');
-                div.innerHTML = `
-                    <div class="bg-pink-600 text-white p-3 rounded-2xl rounded-tr-none max-w-[85%] shadow-sm">
-                        ${text}
-                    </div>
-                `;
-            } else {
-                div.innerHTML = `
-                    <div class="w-8 h-8 rounded-full bg-pink-100 dark:bg-pink-900 flex items-center justify-center shrink-0">
-                        <i data-lucide="bot" class="w-5 h-5 text-pink-600 dark:text-pink-400"></i>
-                    </div>
-                    <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-3 rounded-2xl rounded-tl-none max-w-[85%] shadow-sm prose dark:prose-invert text-sm">
-                        ${marked.parse(text)}
-                    </div>
-                `;
-            }
-            chatHistory.appendChild(div);
-            lucide.createIcons();
-            chatHistory.scrollTop = chatHistory.scrollHeight;
-        }
-
-        chatForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const msg = chatInput.value.trim();
-            if (!msg) return;
-
-            if (!documentContext) {
-                showMessage("No Context", "Please upload a document first.");
-                return;
-            }
-
-            addChatMessage('user', msg);
-            chatInput.value = '';
-            chatInput.disabled = true;
-            chatSubmitBtn.disabled = true;
-
-            // Loading indicator
-            const loadingId = 'loading-' + Date.now();
-            const loadingDiv = document.createElement('div');
-            loadingDiv.id = loadingId;
-            loadingDiv.className = 'flex gap-3';
-            loadingDiv.innerHTML = `
-                <div class="w-8 h-8 rounded-full bg-pink-100 dark:bg-pink-900 flex items-center justify-center shrink-0">
-                    <i data-lucide="bot" class="w-5 h-5 text-pink-600 dark:text-pink-400"></i>
-                </div>
-                <div class="bg-gray-100 dark:bg-gray-800 p-3 rounded-2xl rounded-tl-none flex items-center gap-2">
-                    <div class="w-2 h-2 bg-pink-600 rounded-full animate-bounce" style="animation-delay: 0ms"></div>
-                    <div class="w-2 h-2 bg-pink-600 rounded-full animate-bounce" style="animation-delay: 150ms"></div>
-                    <div class="w-2 h-2 bg-pink-600 rounded-full animate-bounce" style="animation-delay: 300ms"></div>
-                </div>
-            `;
-            chatHistory.appendChild(loadingDiv);
-            chatHistory.scrollTop = chatHistory.scrollHeight;
-
-            try {
-                const systemPrompt = "You are a helpful teacher assistant. Answer questions based ONLY on the provided source context. If the answer is not in the context, politely say so. Format output with markdown.";
-                const prompt = `Context:\n${documentContext.substring(0, 30000)}\n\nUser Question: ${msg}`; // Limit context slightly to fit context windows if huge
-                
-                const response = await callGemini(prompt, null, systemPrompt);
-                
-                document.getElementById(loadingId).remove();
-                addChatMessage('assistant', response);
-                
-            } catch (error) {
-                document.getElementById(loadingId).remove();
-                addChatMessage('assistant', `*Error: ${error.message}*`);
-            } finally {
-                chatInput.disabled = false;
-                chatSubmitBtn.disabled = false;
-                chatInput.focus();
-            }
-        });
-
-        // Ensure Document Context Check
-        function checkContext() {
-            if (!documentContext) {
-                showMessage("Required", "Please upload a PDF document first to use this feature.");
-                return false;
-            }
-            return true;
-        }
-
-        // MCQ Generation
-        document.getElementById('generate-mcq-btn').addEventListener('click', async () => {
-            if (!checkContext()) return;
+            document.getElementById('presentationState').classList.add('hidden');
+            const container = document.getElementById('slideContainer');
+            const controls = document.getElementById('slideControls');
             
-            const schema = {
-                type: "OBJECT",
-                properties: {
-                    quizTitle: { type: "STRING" },
-                    questions: {
-                        type: "ARRAY",
-                        items: {
-                            type: "OBJECT",
-                            properties: {
-                                question: { type: "STRING" },
-                                options: { type: "ARRAY", items: { type: "STRING" } },
-                                correctIndex: { type: "INTEGER", description: "Index of correct option (0-3)" },
-                                explanation: { type: "STRING" }
-                            },
-                            required: ["question", "options", "correctIndex", "explanation"]
-                        }
-                    }
-                },
-                required: ["quizTitle", "questions"]
-            };
+            container.innerHTML = '';
+            container.classList.remove('hidden');
+            controls.classList.remove('hidden');
 
-            setLoader(true, "Generating Quiz", "Creating intelligent multiple-choice questions from the text...");
-
-            try {
-                const prompt = `Generate 5 challenging multiple choice questions based on the key concepts in this text:\n\n${documentContext.substring(0, 15000)}`;
-                const data = await callGemini(prompt, schema);
+            slidesData.forEach((slide, index) => {
+                const slideEl = document.createElement('div');
+                slideEl.className = `slide p-10 flex flex-col justify-center ${index === 0 ? 'active' : ''} bg-white dark:bg-slate-800`;
                 
-                renderMCQs(data);
-            } catch (error) {
-                showMessage("Error", "Failed to generate MCQs: " + error.message);
-            } finally {
-                setLoader(false);
-            }
-        });
-
-        function renderMCQs(data) {
-            const container = document.getElementById('mcq-container');
-            container.innerHTML = `<h2 class="text-xl font-bold font-serif mb-4 pb-2 border-b dark:border-gray-700">${data.quizTitle}</h2>`;
-            
-            data.questions.forEach((q, index) => {
-                const qDiv = document.createElement('div');
-                qDiv.className = "bg-white dark:bg-notebook-darkBg border border-gray-200 dark:border-gray-800 rounded-lg p-4 shadow-sm";
+                let contentHtml = `<h2 class="text-4xl font-bold text-pink-600 dark:text-pink-400 mb-8 border-b-2 border-pink-100 dark:border-pink-900/50 pb-4">${slide.title}</h2>`;
                 
-                let optionsHtml = q.options.map((opt, i) => `
-                    <label class="flex items-center gap-3 p-3 rounded border border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors mb-2">
-                        <input type="radio" name="q${index}" value="${i}" class="text-pink-600 focus:ring-pink-500 h-4 w-4">
-                        <span class="text-sm">${opt}</span>
-                    </label>
-                `).join('');
-
-                qDiv.innerHTML = `
-                    <p class="font-medium mb-3"><span class="text-pink-600 mr-2">${index + 1}.</span>${q.question}</p>
-                    <div class="options-container">${optionsHtml}</div>
-                    <div class="hidden mt-4 p-3 rounded bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 text-sm explanation">
-                        <strong>Explanation:</strong> ${q.explanation}
-                    </div>
-                    <button class="mt-2 text-sm text-pink-600 hover:underline check-answer-btn" data-correct="${q.correctIndex}">Check Answer</button>
-                `;
+                contentHtml += `<div class="flex-1 flex gap-8">`;
                 
-                container.appendChild(qDiv);
+                // Text column
+                contentHtml += `<ul class="space-y-4 text-xl flex-1 text-gray-700 dark:text-gray-300">
+                    ${slide.points.map(p => `<li class="flex items-start"><i class="fa-solid fa-caret-right text-pink-500 mt-1.5 mr-3 text-sm"></i> <span>${p}</span></li>`).join('')}
+                </ul>`;
+
+                // Simple Chart Mockup if requested
+                if (slide.chartType && slide.chartType !== 'none' && slide.chartData) {
+                    contentHtml += `<div class="w-1/3 flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-700/50 rounded-xl p-4 border border-slate-100 dark:border-slate-700">
+                        <div class="text-sm font-medium text-slate-500 mb-4 uppercase tracking-wider">${slide.chartType} Chart representation</div>
+                        <div class="w-full flex items-end justify-center gap-2 h-32 border-b border-l border-slate-300 dark:border-slate-600 pb-1 pl-1">
+                            ${slide.chartData.data.map((val, i) => `
+                                <div class="flex flex-col items-center w-1/4 group">
+                                    <div class="w-full bg-gradient-to-t from-pink-600 to-pink-400 rounded-t-sm transition-all group-hover:opacity-80 relative" style="height: ${Math.max(10, val)}%;">
+                                        <span class="absolute -top-6 left-1/2 transform -translate-x-1/2 text-xs font-bold text-slate-600 dark:text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity">${val}</span>
+                                    </div>
+                                    <span class="text-[10px] mt-1 text-slate-500 truncate w-full text-center" title="${slide.chartData.labels[i] || i}">${slide.chartData.labels[i] || i}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>`;
+                }
+                
+                contentHtml += `</div>`;
+                
+                // Footer
+                contentHtml += `<div class="absolute bottom-4 right-6 text-sm text-gray-400 font-mono">Educator AI // Slide ${index + 1}</div>`;
+
+                slideEl.innerHTML = contentHtml;
+                container.appendChild(slideEl);
             });
-
-            // Add event listeners to check buttons
-            container.querySelectorAll('.check-answer-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    const qDiv = e.target.closest('div');
-                    const selected = qDiv.querySelector(`input[type="radio"]:checked`);
-                    const correctIdx = e.target.getAttribute('data-correct');
-                    
-                    if (!selected) return;
-
-                    const labels = qDiv.querySelectorAll('label');
-                    labels.forEach(l => {
-                        l.classList.remove('border-green-500', 'bg-green-50', 'border-red-500', 'bg-red-50', 'dark:bg-green-900/20', 'dark:bg-red-900/20');
-                    });
-
-                    if (selected.value === correctIdx) {
-                        selected.closest('label').classList.add('border-green-500', 'bg-green-50', 'dark:bg-green-900/20');
-                    } else {
-                        selected.closest('label').classList.add('border-red-500', 'bg-red-50', 'dark:bg-red-900/20');
-                        labels[correctIdx].classList.add('border-green-500', 'bg-green-50', 'dark:bg-green-900/20');
-                    }
-
-                    qDiv.querySelector('.explanation').classList.remove('hidden');
-                    e.target.classList.add('hidden');
-                });
-            });
+            
+            updateSlideIndicator();
         }
 
-        // Knowledge Graph Generation
-        document.getElementById('generate-graph-btn').addEventListener('click', async () => {
-            if (!checkContext()) return;
-
-            const schema = {
-                type: "OBJECT",
-                properties: {
-                    nodes: {
-                        type: "ARRAY",
-                        items: {
-                            type: "OBJECT",
-                            properties: {
-                                id: { type: "INTEGER" },
-                                label: { type: "STRING" },
-                                group: { type: "STRING", description: "Category of the concept" }
-                            },
-                            required: ["id", "label"]
-                        }
-                    },
-                    edges: {
-                        type: "ARRAY",
-                        items: {
-                            type: "OBJECT",
-                            properties: {
-                                from: { type: "INTEGER" },
-                                to: { type: "INTEGER" },
-                                label: { type: "STRING", description: "Relationship description" }
-                            },
-                            required: ["from", "to", "label"]
-                        }
-                    }
-                },
-                required: ["nodes", "edges"]
-            };
-
-            const loadingOverlay = document.getElementById('graph-loading');
-            loadingOverlay.classList.remove('hidden');
-
-            try {
-                const prompt = `Analyze this text and extract core entities and their relationships to build a knowledge graph. Limit to max 15 nodes and important connections.\n\n${documentContext.substring(0, 10000)}`;
-                const data = await callGemini(prompt, schema);
-                
-                renderGraph(data);
-            } catch (error) {
-                showMessage("Error", "Failed to generate graph: " + error.message);
-            } finally {
-                loadingOverlay.classList.add('hidden');
+        function nextSlide() {
+            if (State.currentSlide < State.slides.length - 1) {
+                document.querySelectorAll('.slide')[State.currentSlide].classList.remove('active');
+                State.currentSlide++;
+                document.querySelectorAll('.slide')[State.currentSlide].classList.add('active');
+                updateSlideIndicator();
             }
-        });
+        }
 
-        function renderGraph(data) {
-            const container = document.getElementById('network-canvas');
-            const isDark = document.documentElement.classList.contains('dark');
+        function prevSlide() {
+            if (State.currentSlide > 0) {
+                document.querySelectorAll('.slide')[State.currentSlide].classList.remove('active');
+                State.currentSlide--;
+                document.querySelectorAll('.slide')[State.currentSlide].classList.add('active');
+                updateSlideIndicator();
+            }
+        }
+
+        function updateSlideIndicator() {
+            document.getElementById('slideIndicator').textContent = `${State.currentSlide + 1} / ${State.slides.length}`;
+        }
+
+        // 2. Knowledge Graph Renderer (using Vis.js)
+        function renderGraph(graphData) {
+            document.getElementById('graphState').classList.add('hidden');
+            const container = document.getElementById('network-graph');
             
-            const textColor = isDark ? '#f3f4f6' : '#111827';
-            const edgeColor = isDark ? '#4b5563' : '#9ca3af';
+            // Map colors based on groups for visual flair
+            const colors = ['#ec4899', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6'];
+            
+            const nodes = new vis.DataSet(graphData.nodes.map(n => ({
+                id: n.id,
+                label: n.label,
+                color: {
+                    background: colors[parseInt(n.group || 0) % colors.length] || colors[0],
+                    border: '#ffffff'
+                },
+                font: { color: '#ffffff', face: 'ui-sans-serif', size: 14 }
+            })));
 
+            const edges = new vis.DataSet(graphData.edges.map(e => ({
+                from: e.from,
+                to: e.to,
+                label: e.label,
+                font: { align: 'middle', size: 10, color: document.documentElement.classList.contains('dark') ? '#94a3b8' : '#64748b', strokeWidth: 0 },
+                color: { color: document.documentElement.classList.contains('dark') ? '#475569' : '#cbd5e1' },
+                arrows: 'to'
+            })));
+
+            const data = { nodes: nodes, edges: edges };
             const options = {
                 nodes: {
-                    shape: 'dot',
-                    size: 16,
-                    font: { size: 14, color: textColor, face: 'Inter' },
+                    shape: 'box',
+                    margin: 10,
                     borderWidth: 2,
-                    color: {
-                        background: '#fbcfe8', border: '#db2777',
-                        highlight: { background: '#db2777', border: '#be185d' }
-                    }
+                    shadow: true
                 },
                 edges: {
-                    width: 1.5,
-                    font: { size: 11, color: textColor, align: 'middle', face: 'Inter' },
-                    color: { color: edgeColor, highlight: '#db2777' },
-                    arrows: { to: { enabled: true, scaleFactor: 0.5 } },
                     smooth: { type: 'continuous' }
                 },
                 physics: {
                     barnesHut: { gravitationalConstant: -2000, centralGravity: 0.3, springLength: 150 }
                 },
-                interaction: { hover: true }
+                interaction: { hover: true, tooltipDelay: 200 }
             };
 
-            const networkData = {
-                nodes: new vis.DataSet(data.nodes),
-                edges: new vis.DataSet(data.edges)
-            };
-
-            if (networkGraph) {
-                networkGraph.destroy();
+            // Cleanup old instance
+            if (State.network) {
+                State.network.destroy();
             }
-            networkGraph = new vis.Network(container, networkData, options);
+
+            State.network = new vis.Network(container, data, options);
         }
 
-        // Presentation Generation
-        document.getElementById('generate-pres-btn').addEventListener('click', async () => {
-            if (!checkContext()) return;
+        // 3. MCQ Renderer
+        function renderMCQs(mcqData) {
+            document.getElementById('mcqState').classList.add('hidden');
+            const container = document.getElementById('mcqContainer');
+            container.innerHTML = '';
+            container.classList.remove('hidden');
 
-            const schema = {
-                type: "OBJECT",
-                properties: {
-                    title: { type: "STRING" },
-                    slides: {
-                        type: "ARRAY",
-                        items: {
-                            type: "OBJECT",
-                            properties: {
-                                slideTitle: { type: "STRING" },
-                                bulletPoints: { type: "ARRAY", items: { type: "STRING" } },
-                                speakerNotes: { type: "STRING" },
-                                needsChart: { type: "BOOLEAN", description: "True if numeric data in text supports a chart for this point" },
-                                chartData: {
-                                    type: "OBJECT",
-                                    properties: {
-                                        type: { type: "STRING", enum: ["bar", "pie", "line"] },
-                                        labels: { type: "ARRAY", items: { type: "STRING" } },
-                                        datasetLabel: { type: "STRING" },
-                                        dataValues: { type: "ARRAY", items: { type: "NUMBER" } }
-                                    }
-                                }
-                            },
-                            required: ["slideTitle", "bulletPoints", "needsChart"]
-                        }
-                    }
-                },
-                required: ["title", "slides"]
-            };
-
-            setLoader(true, "Crafting Presentation", "Structuring slides and extracting data for charts...");
-
-            try {
-                const prompt = `Create a 5-6 slide presentation outline based on the following text. If there is quantitative data, set needsChart to true and provide chartData.\n\n${documentContext.substring(0, 15000)}`;
-                const data = await callGemini(prompt, schema);
+            mcqData.forEach((q, index) => {
+                const qBlock = document.createElement('div');
+                qBlock.className = 'bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700';
                 
-                renderPresentation(data);
-            } catch (error) {
-                showMessage("Error", "Failed to generate presentation: " + error.message);
-            } finally {
-                setLoader(false);
-            }
-        });
-
-        function renderPresentation(data) {
-            const container = document.getElementById('presentation-container');
-            container.innerHTML = `<h2 class="text-xl font-bold font-serif mb-6 text-center">${data.title}</h2>`;
-            
-            data.slides.forEach((slide, index) => {
-                const slideDiv = document.createElement('div');
-                slideDiv.className = "bg-white dark:bg-[#1e1e1e] border border-gray-200 dark:border-gray-800 rounded-xl shadow-sm overflow-hidden mb-6";
+                let html = `<h4 class="text-lg font-bold mb-4 flex gap-3"><span class="bg-pink-100 dark:bg-pink-900/50 text-pink-600 dark:text-pink-400 w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0">${index + 1}</span> <span>${q.question}</span></h4>`;
                 
-                let contentHtml = `<div class="p-6">
-                    <h3 class="text-lg font-bold mb-4 flex items-center gap-2"><span class="bg-gray-100 dark:bg-gray-800 text-gray-500 rounded px-2 py-0.5 text-xs">Slide ${index + 1}</span> ${slide.slideTitle}</h3>
-                    <ul class="list-disc pl-5 space-y-2 mb-4 text-sm text-gray-700 dark:text-gray-300">
-                        ${slide.bulletPoints.map(bp => `<li>${bp}</li>`).join('')}
-                    </ul>`;
-
-                let chartId = `chart-${index}`;
-                
-                if (slide.needsChart && slide.chartData && slide.chartData.labels && slide.chartData.labels.length > 0) {
-                    contentHtml += `
-                        <div class="mt-6 bg-gray-50 dark:bg-gray-900/50 p-4 rounded-lg border border-gray-100 dark:border-gray-800">
-                            <canvas id="${chartId}" width="400" height="200"></canvas>
-                        </div>
+                html += `<div class="space-y-2 mb-4">`;
+                q.options.forEach((opt, optIndex) => {
+                    const id = `q${index}_o${optIndex}`;
+                    html += `
+                        <label class="flex items-center p-3 border border-gray-200 dark:border-gray-700 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors group">
+                            <input type="radio" name="q${index}" value="${optIndex}" class="w-4 h-4 text-pink-600 bg-gray-100 border-gray-300 focus:ring-pink-500 dark:focus:ring-pink-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600 mr-3">
+                            <span class="text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white">${opt}</span>
+                        </label>
                     `;
-                }
+                });
+                html += `</div>`;
 
-                if (slide.speakerNotes) {
-                    contentHtml += `
-                        <div class="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800 text-xs text-gray-500 dark:text-gray-400">
-                            <strong>Notes:</strong> ${slide.speakerNotes}
-                        </div>
-                    `;
-                }
+                // Explanation block (hidden initially)
+                html += `
+                    <div id="exp_q${index}" class="hidden mt-4 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900 rounded-lg">
+                        <p class="font-bold text-green-800 dark:text-green-400 mb-1"><i class="fa-solid fa-check-circle mr-2"></i>Correct Answer: ${q.options[q.answerIndex]}</p>
+                        <p class="text-sm text-green-700 dark:text-green-300">${q.explanation}</p>
+                    </div>
+                    <div id="wrong_q${index}" class="hidden mt-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900 rounded-lg">
+                        <p class="font-bold text-red-800 dark:text-red-400"><i class="fa-solid fa-xmark-circle mr-2"></i>Incorrect.</p>
+                    </div>
+                `;
 
-                contentHtml += `</div>`;
-                slideDiv.innerHTML = contentHtml;
-                container.appendChild(slideDiv);
+                html += `<button onclick="checkAnswer(${index}, ${q.answerIndex})" class="mt-2 text-sm font-semibold text-pink-600 hover:text-pink-700 dark:text-pink-400 dark:hover:text-pink-300">Check Answer</button>`;
 
-                // Render Chart if needed
-                if (slide.needsChart && slide.chartData && slide.chartData.labels.length > 0) {
-                    setTimeout(() => {
-                        const ctx = document.getElementById(chartId).getContext('2d');
-                        const isDark = document.documentElement.classList.contains('dark');
-                        const textColor = isDark ? '#9ca3af' : '#4b5563';
-                        const gridColor = isDark ? '#374151' : '#e5e7eb';
-
-                        new Chart(ctx, {
-                            type: slide.chartData.type || 'bar',
-                            data: {
-                                labels: slide.chartData.labels,
-                                datasets: [{
-                                    label: slide.chartData.datasetLabel || 'Data',
-                                    data: slide.chartData.dataValues,
-                                    backgroundColor: ['#db2777', '#f472b6', '#fbcfe8', '#be185d', '#831843'],
-                                    borderRadius: 4
-                                }]
-                            },
-                            options: {
-                                responsive: true,
-                                plugins: { legend: { display: slide.chartData.type === 'pie', labels: { color: textColor } } },
-                                scales: slide.chartData.type !== 'pie' ? {
-                                    y: { beginAtZero: true, grid: { color: gridColor }, ticks: { color: textColor } },
-                                    x: { grid: { display: false }, ticks: { color: textColor } }
-                                } : {}
-                            }
-                        });
-                    }, 100);
-                }
+                qBlock.innerHTML = html;
+                container.appendChild(qBlock);
             });
         }
 
-        // Experiment Guide Generation
-        document.getElementById('generate-exp-btn').addEventListener('click', async () => {
-            if (!checkContext()) return;
+        // Global function for onclick in generated HTML
+        window.checkAnswer = function(qIndex, correctIndex) {
+            const selected = document.querySelector(`input[name="q${qIndex}"]:checked`);
+            const expBlock = document.getElementById(`exp_q${qIndex}`);
+            const wrongBlock = document.getElementById(`wrong_q${qIndex}`);
+            
+            expBlock.classList.add('hidden');
+            wrongBlock.classList.add('hidden');
 
-            const schema = {
-                type: "OBJECT",
-                properties: {
-                    experimentTitle: { type: "STRING" },
-                    objective: { type: "STRING" },
-                    materials: { type: "ARRAY", items: { type: "STRING" } },
-                    steps: {
-                        type: "ARRAY",
-                        items: {
-                            type: "OBJECT",
-                            properties: {
-                                stepNumber: { type: "INTEGER" },
-                                instruction: { type: "STRING" },
-                                imageGenerationPrompt: { type: "STRING", description: "A detailed prompt to generate an image illustrating this step" }
-                            },
-                            required: ["stepNumber", "instruction", "imageGenerationPrompt"]
-                        }
-                    }
-                },
-                required: ["experimentTitle", "objective", "materials", "steps"]
-            };
-
-            setLoader(true, "Designing Lab", "Creating experiment steps and generating illustrative guides...");
-
-            try {
-                // 1. Get the structured text layout
-                const prompt = `Based on the scientific or procedural concepts in this text, design a practical, safe experiment or demonstration. Provide steps and a highly descriptive image prompt for each step.\n\n${documentContext.substring(0, 10000)}`;
-                const experimentData = await callGemini(prompt, schema);
-                
-                const container = document.getElementById('experiment-container');
-                container.innerHTML = `
-                    <h2 class="text-2xl font-bold mb-2">${experimentData.experimentTitle}</h2>
-                    <p class="text-gray-600 dark:text-gray-400 mb-6">${experimentData.objective}</p>
-                    
-                    <h3 class="text-lg font-semibold mb-2 text-pink-600">Materials Needed</h3>
-                    <ul class="mb-8 bg-pink-50 dark:bg-pink-900/20 p-4 rounded-lg border border-pink-100 dark:border-pink-800">
-                        ${experimentData.materials.map(m => `<li>${m}</li>`).join('')}
-                    </ul>
-                    <div class="space-y-10" id="steps-container"></div>
-                `;
-
-                const stepsContainer = document.getElementById('steps-container');
-
-                // 2. Process steps and fetch images sequentially (to avoid rate limits)
-                for (const step of experimentData.steps) {
-                    const stepDiv = document.createElement('div');
-                    stepDiv.className = "relative pl-8 border-l-2 border-gray-200 dark:border-gray-700";
-                    
-                    stepDiv.innerHTML = `
-                        <div class="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-pink-600 ring-4 ring-white dark:ring-notebook-darkPanel"></div>
-                        <h4 class="font-bold text-lg mb-2">Step ${step.stepNumber}</h4>
-                        <p class="mb-4">${step.instruction}</p>
-                        <div class="w-full h-48 bg-gray-100 dark:bg-gray-800 rounded-lg flex flex-col items-center justify-center border border-dashed border-gray-300 dark:border-gray-700" id="img-container-${step.stepNumber}">
-                            <div class="loader w-6 h-6 border-2 mb-2"></div>
-                            <span class="text-xs text-gray-500">Generating illustration...</span>
-                        </div>
-                    `;
-                    stepsContainer.appendChild(stepDiv);
-
-                    // Call image generation asynchronously
-                    callImagen(`Illustration for a science experiment: ${step.imageGenerationPrompt}. Clean, educational style, white background.`)
-                        .then(imgUrl => {
-                            const imgContainer = document.getElementById(`img-container-${step.stepNumber}`);
-                            imgContainer.className = "w-full rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700";
-                            imgContainer.innerHTML = `<img src="${imgUrl}" alt="Step ${step.stepNumber}" class="w-full h-auto object-cover">`;
-                        });
-                }
-
-            } catch (error) {
-                showMessage("Error", "Failed to generate experiment: " + error.message);
-            } finally {
-                setLoader(false);
+            if (!selected) {
+                showToast("Please select an option first.");
+                return;
             }
-        });
+
+            if (parseInt(selected.value) === correctIndex) {
+                expBlock.classList.remove('hidden');
+            } else {
+                wrongBlock.classList.remove('hidden');
+                // Optional: Automatically show explanation after wrong answer
+                // setTimeout(() => expBlock.classList.remove('hidden'), 1000);
+            }
+        };
+
+
+        // --- Utilities (Modals & Toasts) ---
+        function showModal(title) {
+            document.getElementById('generationTitle').textContent = title;
+            document.getElementById('generationModal').classList.remove('hidden');
+        }
+
+        function hideModal() {
+            document.getElementById('generationModal').classList.add('hidden');
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMessage').textContent = msg;
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3000);
+        }
 
     </script>
 </body>
