@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Educator AI - NotebookLM Style Assistant</title>
-    
+
     <!-- Dependencies via CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -56,7 +56,7 @@
         .markdown-body code { background-color: rgba(128,128,128,0.1); padding: 0.2em 0.4em; border-radius: 0.25rem; font-family: monospace; font-size: 0.9em; }
         .markdown-body pre code { background: transparent; padding: 0; }
         .markdown-body pre { background-color: rgba(0,0,0,0.05); padding: 1em; border-radius: 0.5rem; overflow-x: auto; margin-bottom: 1em; }
-        
+
         .dark .markdown-body h1, .dark .markdown-body h2, .dark .markdown-body h3 { color: #fbcfe8; }
         .dark .markdown-body strong { color: #f472b6; }
         .dark .markdown-body pre { background-color: rgba(255,255,255,0.05); }
@@ -84,7 +84,7 @@
         .slide-container { position: relative; overflow: hidden; height: 100%; }
         .slide { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; transition: opacity 0.5s ease-in-out; pointer-events: none; }
         .slide.active { opacity: 1; pointer-events: auto; }
-        
+
         #network-graph { width: 100%; height: 100%; border-radius: 0.5rem; }
     </style>
 </head>
@@ -93,25 +93,38 @@
     <!-- Navbar -->
     <nav class="bg-white dark:bg-darkPanel border-b border-pink-200 dark:border-pink-900 shadow-sm z-10 flex-shrink-0">
         <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between h-16 items-center">
-                <div class="flex items-center gap-3">
+            <div class="flex justify-between h-16 items-center gap-4">
+                <div class="flex items-center gap-3 flex-shrink-0">
                     <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-pink-400 to-pink-600 flex items-center justify-center text-white shadow-lg">
                         <i class="fa-solid fa-graduation-cap text-xl"></i>
                     </div>
-                    <span class="font-bold text-xl tracking-tight text-pink-600 dark:text-pink-400">Educator AI</span>
+                    <span class="font-bold text-xl tracking-tight text-pink-600 dark:text-pink-400 hidden sm:inline">Educator AI</span>
                 </div>
-                
-                <div class="flex items-center gap-4 flex-1 justify-end">
-                    <div class="relative w-64 md:w-96">
-                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <i class="fa-solid fa-key text-gray-400"></i>
-                        </div>
-                        <input type="password" id="apiKeyInput" placeholder="Enter Gemini API Key..." 
-                            class="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg leading-5 bg-white dark:bg-darkBg placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 sm:text-sm transition-colors">
+
+                <div class="flex items-center gap-2 md:gap-4 flex-1 justify-end max-w-2xl">
+                    <!-- Dynamic Model Selector -->
+                    <div class="relative w-36 md:w-48">
+                        <select id="modelSelect" class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-darkBg text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 transition-colors">
+                            <option value="gemini-2.5-flash" selected>Gemini 2.5 Flash</option>
+                            <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+                            <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
+                            <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+                        </select>
                     </div>
-                    <button id="themeToggle" class="p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800 transition-colors">
-                        <i class="fa-solid fa-moon text-xl hidden dark:block"></i>
-                        <i class="fa-solid fa-sun text-xl block dark:hidden"></i>
+
+                    <!-- API Key Input -->
+                    <div class="relative w-40 md:w-64">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fa-solid fa-key text-gray-400 text-xs md:text-sm"></i>
+                        </div>
+                        <input type="password" id="apiKeyInput" placeholder="Enter Gemini API Key..."
+                            class="block w-full pl-8 md:pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-darkBg text-xs md:text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-colors">
+                    </div>
+
+                    <!-- Dark Mode Toggle -->
+                    <button id="themeToggle" class="p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800 transition-colors flex-shrink-0">
+                        <i class="fa-solid fa-moon text-lg hidden dark:block"></i>
+                        <i class="fa-solid fa-sun text-lg block dark:hidden text-yellow-400"></i>
                     </button>
                 </div>
             </div>
@@ -119,11 +132,11 @@
     </nav>
 
     <!-- Main Content -->
-    <main class="flex-1 flex overflow-hidden">
-        
+    <main class="flex-1 flex overflow-hidden flex-col md:flex-row">
+
         <!-- Left Pane: Source Viewer -->
-        <section class="w-1/2 flex flex-col border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-darkPanel relative">
-            
+        <section class="w-full md:w-1/2 flex flex-col border-b md:border-b-0 md:border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-darkPanel relative h-1/2 md:h-full">
+
             <!-- Source Header -->
             <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-slate-800/50">
                 <h2 class="text-sm font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Source Material</h2>
@@ -143,13 +156,13 @@
                     <p>No document uploaded.</p>
                     <p class="text-sm">Upload a PDF or Text file to begin.</p>
                 </div>
-                
+
                 <!-- Native PDF Viewer (Rendered via PDF.js) -->
                 <div id="pdfVisualContainer" class="hidden w-full flex-col items-center py-6 px-4 min-h-full"></div>
-                
+
                 <!-- Text Viewer (Fallback/Text files) -->
                 <div id="textView" class="hidden p-8 max-w-3xl mx-auto text-gray-800 dark:text-gray-200 whitespace-pre-wrap font-serif leading-relaxed"></div>
-                
+
                 <!-- Processing Overlay -->
                 <div id="processingOverlay" class="hidden absolute inset-0 bg-white/80 dark:bg-darkBg/80 flex flex-col items-center justify-center z-10 backdrop-blur-sm">
                     <div class="loader mb-4"></div>
@@ -159,11 +172,11 @@
         </section>
 
         <!-- Right Pane: AI Workspace -->
-        <section class="w-1/2 flex flex-col bg-gray-50 dark:bg-darkBg">
-            
+        <section class="w-full md:w-1/2 flex flex-col bg-gray-50 dark:bg-darkBg h-1/2 md:h-full">
+
             <!-- Tools Navigation -->
-            <div class="px-4 py-2 bg-white dark:bg-darkPanel border-b border-gray-200 dark:border-gray-700">
-                <nav class="flex space-x-2" aria-label="Tabs">
+            <div class="px-4 py-2 bg-white dark:bg-darkPanel border-b border-gray-200 dark:border-gray-700 flex-shrink-0 overflow-x-auto">
+                <nav class="flex space-x-2 min-w-max" aria-label="Tabs">
                     <button onclick="switchTab('chat')" id="tab-chat" class="tab-btn active px-4 py-2 rounded-md text-sm font-medium bg-pink-100 text-pink-700 dark:bg-pink-900/40 dark:text-pink-300 transition-colors">
                         <i class="fa-regular fa-comments mr-2"></i> Chat
                     </button>
@@ -181,7 +194,7 @@
 
             <!-- Workspace Content Areas -->
             <div class="flex-1 relative overflow-hidden">
-                
+
                 <!-- Chat Interface -->
                 <div id="view-chat" class="absolute inset-0 flex flex-col view-panel">
                     <div id="chatHistory" class="flex-1 overflow-y-auto p-4 space-y-6">
@@ -195,12 +208,12 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <!-- Chat Input -->
                     <div class="p-4 bg-white dark:bg-darkPanel border-t border-gray-200 dark:border-gray-700">
                         <form id="chatForm" class="flex gap-2 relative">
-                            <input type="text" id="chatInput" placeholder="Ask a question about the document..." 
-                                class="flex-1 pl-4 pr-12 py-3 border border-gray-300 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-darkBg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-shadow">
+                            <input type="text" id="chatInput" placeholder="Ask a question about the document..."
+                                class="flex-1 pl-4 pr-12 py-3 border border-gray-300 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-darkBg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-shadow text-sm">
                             <button type="submit" id="sendBtn" class="absolute right-2 top-2 bottom-2 aspect-square bg-pink-500 hover:bg-pink-600 text-white rounded-lg flex items-center justify-center transition-colors disabled:opacity-50">
                                 <i class="fa-solid fa-paper-plane"></i>
                             </button>
@@ -212,15 +225,15 @@
                 <div id="view-presentation" class="absolute inset-0 hidden flex flex-col bg-gray-100 dark:bg-darkBg view-panel">
                     <div class="p-4 flex justify-between items-center border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-darkPanel">
                         <div>
-                            <h3 class="font-bold">Presentation Builder</h3>
+                            <h3 class="font-bold text-sm md:text-base">Presentation Builder</h3>
                             <p class="text-xs text-gray-500">Generate slides from context.</p>
                         </div>
-                        <button onclick="generateFeature('presentation')" class="bg-pink-500 hover:bg-pink-600 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2">
+                        <button onclick="generateFeature('presentation')" class="bg-pink-500 hover:bg-pink-600 text-white px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-sm font-medium flex items-center gap-2">
                             <i class="fa-solid fa-wand-magic-sparkles"></i> Generate Slides
                         </button>
                     </div>
-                    <div class="flex-1 relative flex items-center justify-center p-8">
-                        
+                    <div class="flex-1 relative flex items-center justify-center p-4 md:p-8">
+
                         <!-- Initial/Loading State -->
                         <div id="presentationState" class="text-center text-gray-400">
                             <i class="fa-solid fa-chalkboard text-5xl mb-4 opacity-50"></i>
@@ -228,7 +241,7 @@
                         </div>
 
                         <!-- Slides Carousel container -->
-                        <div id="slideContainer" class="w-full max-w-2xl aspect-[16/9] bg-white dark:bg-slate-800 rounded-xl shadow-2xl relative hidden slide-container overflow-hidden border border-gray-200 dark:border-gray-700">
+                        <div id="slideContainer" class="w-full max-w-2xl aspect-[16/9] bg-white dark:bg-slate-800 rounded-xl shadow-2xl relative hidden slide-container border border-gray-200 dark:border-gray-700">
                             <!-- Slides injected here -->
                         </div>
 
@@ -245,17 +258,17 @@
                 <div id="view-graph" class="absolute inset-0 hidden flex flex-col view-panel bg-white dark:bg-darkPanel">
                     <div class="p-4 flex justify-between items-center border-b border-gray-200 dark:border-gray-700 z-10 bg-white dark:bg-darkPanel shadow-sm">
                         <div>
-                            <h3 class="font-bold">Knowledge Graph</h3>
+                            <h3 class="font-bold text-sm md:text-base">Knowledge Graph</h3>
                             <p class="text-xs text-gray-500">Visualize concepts and relationships.</p>
                         </div>
-                        <button onclick="generateFeature('graph')" class="bg-pink-500 hover:bg-pink-600 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2">
+                        <button onclick="generateFeature('graph')" class="bg-pink-500 hover:bg-pink-600 text-white px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-sm font-medium flex items-center gap-2">
                             <i class="fa-solid fa-diagram-project"></i> Generate Graph
                         </button>
                     </div>
                     <div class="flex-1 relative">
                         <div id="graphState" class="absolute inset-0 flex flex-col items-center justify-center text-gray-400 z-0">
                             <i class="fa-solid fa-circle-nodes text-5xl mb-4 opacity-50"></i>
-                            <p>Click Generate to build a map of concepts.</p>
+                            <p>Click Generate to map out concepts.</p>
                         </div>
                         <div id="network-graph" class="absolute inset-0 z-0"></div>
                     </div>
@@ -265,14 +278,14 @@
                 <div id="view-mcq" class="absolute inset-0 hidden flex flex-col view-panel bg-gray-50 dark:bg-darkBg">
                     <div class="p-4 flex justify-between items-center border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-darkPanel shadow-sm">
                         <div>
-                            <h3 class="font-bold">Knowledge Check (MCQs)</h3>
+                            <h3 class="font-bold text-sm md:text-base">Knowledge Check (MCQs)</h3>
                             <p class="text-xs text-gray-500">Test understanding with generated quizzes.</p>
                         </div>
-                        <button onclick="generateFeature('mcq')" class="bg-pink-500 hover:bg-pink-600 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2">
+                        <button onclick="generateFeature('mcq')" class="bg-pink-500 hover:bg-pink-600 text-white px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-sm font-medium flex items-center gap-2">
                             <i class="fa-solid fa-list-ol"></i> Generate Quiz
                         </button>
                     </div>
-                    <div class="flex-1 overflow-y-auto p-6">
+                    <div class="flex-1 overflow-y-auto p-4 md:p-6">
                         <div id="mcqState" class="h-full flex flex-col items-center justify-center text-gray-400">
                             <i class="fa-regular fa-circle-check text-5xl mb-4 opacity-50"></i>
                             <p>Click Generate to create a quiz based on the text.</p>
@@ -288,8 +301,8 @@
     </main>
 
     <!-- Global Loading Modal for Generation Tasks -->
-    <div id="generationModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center">
-        <div class="bg-white dark:bg-darkPanel p-8 rounded-2xl shadow-2xl flex flex-col items-center max-w-sm w-full border border-pink-200 dark:border-pink-900">
+    <div id="generationModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-darkPanel p-6 md:p-8 rounded-2xl shadow-2xl flex flex-col items-center max-w-sm w-full border border-pink-200 dark:border-pink-900">
             <div class="loader mb-6 w-12 h-12 border-4"></div>
             <h3 id="generationTitle" class="text-xl font-bold mb-2">Analyzing Data...</h3>
             <p id="generationDesc" class="text-gray-500 text-center text-sm">Our AI is reading the document and crafting the content. This might take a few seconds.</p>
@@ -314,15 +327,27 @@
             network: null // Vis.js instance
         };
 
-        // --- Model Config ---
-        const MODEL_NAME = "gemini-2.5-flash-preview-09-2025";
-        
         // --- Initialization & Event Listeners ---
         document.addEventListener('DOMContentLoaded', () => {
             // Theme toggle
             const themeBtn = document.getElementById('themeToggle');
             themeBtn.addEventListener('click', () => {
                 document.documentElement.classList.toggle('dark');
+                // Re-render Graph to match newly toggled dark theme options
+                if (State.network) {
+                    setTimeout(() => {
+                        const isDark = document.documentElement.classList.contains('dark');
+                        State.network.setOptions({
+                            nodes: {
+                                font: { color: isDark ? '#ffffff' : '#000000' }
+                            },
+                            edges: {
+                                color: { color: isDark ? '#475569' : '#cbd5e1' },
+                                font: { color: isDark ? '#94a3b8' : '#64748b' }
+                            }
+                        });
+                    }, 50);
+                }
             });
 
             // File Upload
@@ -334,6 +359,29 @@
             chatForm.addEventListener('submit', handleChatSubmit);
         });
 
+        // --- Toast Alert Notification ---
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMessage').textContent = message;
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            toast.classList.add('translate-y-0', 'opacity-100');
+            setTimeout(() => {
+                toast.classList.remove('translate-y-0', 'opacity-100');
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 4000);
+        }
+
+        // --- Loading Indicator Modal ---
+        function showModal(title, desc = "Generating results, please wait...") {
+            document.getElementById('generationTitle').textContent = title;
+            document.getElementById('generationDesc').textContent = desc;
+            document.getElementById('generationModal').classList.remove('hidden');
+        }
+
+        function hideModal() {
+            document.getElementById('generationModal').classList.add('hidden');
+        }
+
         // --- File Handling (PDF & Text) ---
         async function handleFileUpload(event) {
             const file = event.target.files[0];
@@ -341,13 +389,13 @@
 
             State.fileName = file.name;
             const isPdf = file.type === 'application/pdf';
-            
+
             // UI Updates
             document.getElementById('emptySourceState').classList.add('hidden');
             const pdfVisualContainer = document.getElementById('pdfVisualContainer');
             const textView = document.getElementById('textView');
             const overlay = document.getElementById('processingOverlay');
-            
+
             overlay.classList.remove('hidden');
 
             try {
@@ -358,7 +406,7 @@
 
                     const arrayBuffer = await file.arrayBuffer();
                     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-                    
+
                     // Extract text for LLM context
                     State.documentText = await extractTextFromPdf(pdf);
 
@@ -373,9 +421,9 @@
                     textView.textContent = text;
                     State.documentText = text;
                 }
-                
+
                 addChatMessage("System", `Successfully loaded document: **${State.fileName}**. You can now chat with it or generate insights.`);
-                
+
             } catch (error) {
                 showToast("Failed to read file: " + error.message);
                 console.error(error);
@@ -386,7 +434,6 @@
 
         async function extractTextFromPdf(pdf) {
             let fullText = "";
-            
             for (let i = 1; i <= pdf.numPages; i++) {
                 const page = await pdf.getPage(i);
                 const textContent = await page.getTextContent();
@@ -399,20 +446,18 @@
         async function renderPdfVisually(pdf) {
             const container = document.getElementById('pdfVisualContainer');
             container.innerHTML = ''; // Clear previous
-            
+
             for (let i = 1; i <= pdf.numPages; i++) {
                 const page = await pdf.getPage(i);
                 const viewport = page.getViewport({ scale: 1.5 });
-                
+
                 const canvas = document.createElement('canvas');
                 const context = canvas.getContext('2d');
                 canvas.height = viewport.height;
                 canvas.width = viewport.width;
                 canvas.className = 'mb-8 w-full max-w-4xl shadow-xl bg-white dark:opacity-95 rounded-sm';
-                
+
                 container.appendChild(canvas);
-                
-                // Render asynchronously to not block the thread completely
                 page.render({ canvasContext: context, viewport: viewport });
             }
         }
@@ -424,8 +469,8 @@
                 throw new Error("Please enter your Gemini API Key in the top right.");
             }
 
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${apiKey}`;
-            
+            const activeModel = document.getElementById('modelSelect').value;
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${activeModel}:generateContent?key=${apiKey}`;
             const payload = {
                 contents: [{ parts: [{ text: prompt }] }]
             };
@@ -462,7 +507,7 @@
                     return expectJson ? JSON.parse(textResponse) : textResponse;
 
                 } catch (error) {
-                    if (i === maxRetries - 1) throw error; // Re-throw if last try
+                    if (i === maxRetries - 1) throw error;
                     await new Promise(res => setTimeout(res, delays[i]));
                 }
             }
@@ -484,7 +529,7 @@
             document.getElementById(`view-${tabId}`).classList.remove('hidden');
 
             // Re-render graph if switching to it to fix sizing issues
-            if(tabId === 'graph' && State.network) {
+            if (tabId === 'graph' && State.network) {
                 setTimeout(() => State.network.fit(), 100);
             }
         }
@@ -499,7 +544,7 @@
             // UI update: Add User message
             inputElement.value = '';
             addChatMessage('User', message);
-            
+
             const sendBtn = document.getElementById('sendBtn');
             sendBtn.disabled = true;
             sendBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
@@ -508,7 +553,7 @@
                 // Construct context
                 let systemContext = "You are a helpful Teacher Assistant. Answer questions based ONLY on the provided document text. If the answer is not in the document, say you cannot find it in the source material.";
                 if (State.documentText) {
-                    systemContext += `\n\n--- DOCUMENT TEXT ---\n${State.documentText.substring(0, 30000)}`; // limit context roughly
+                    systemContext += `\n\n--- DOCUMENT TEXT ---\n${State.documentText.substring(0, 30000)}`;
                 } else {
                     systemContext += "\n\nNo document has been uploaded yet. Ask the user to upload one.";
                 }
@@ -518,9 +563,8 @@
                 fullPrompt += `\nUser: ${message}\nAssistant:`;
 
                 const responseText = await callGemini(fullPrompt, systemContext, false);
-                
                 addChatMessage('Assistant', responseText);
-                
+
                 // Save to history
                 State.chatHistory.push({ role: 'User', text: message });
                 State.chatHistory.push({ role: 'Assistant', text: responseText });
@@ -539,15 +583,15 @@
             const wrapper = document.createElement('div');
             wrapper.className = `flex gap-4 ${role === 'User' ? 'flex-row-reverse' : ''}`;
 
-            const iconHtml = role === 'User' 
+            const iconHtml = role === 'User'
                 ? `<div class="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 flex-shrink-0"><i class="fa-solid fa-user text-sm"></i></div>`
-                : (role === 'System' 
+                : (role === 'System'
                     ? `<div class="w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center text-white flex-shrink-0"><i class="fa-solid fa-triangle-exclamation text-sm"></i></div>`
                     : `<div class="w-8 h-8 rounded-full bg-pink-500 flex items-center justify-center text-white flex-shrink-0"><i class="fa-solid fa-robot text-sm"></i></div>`);
 
             const bubbleClass = role === 'User'
                 ? 'bg-pink-600 text-white rounded-2xl rounded-tr-none px-4 py-3 shadow-sm max-w-[85%]'
-                : (role === 'System' 
+                : (role === 'System'
                     ? 'bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 rounded-2xl px-4 py-3 text-sm italic shadow-sm max-w-[85%]'
                     : 'bg-white dark:bg-darkPanel border border-gray-200 dark:border-gray-700 rounded-2xl rounded-tl-none px-4 py-3 shadow-sm max-w-[85%] markdown-body');
 
@@ -559,7 +603,7 @@
                     ${role === 'Assistant' ? contentHtml : `<p class="text-sm">${contentHtml}</p>`}
                 </div>
             `;
-            
+
             container.appendChild(wrapper);
             container.scrollTop = container.scrollHeight;
         }
@@ -574,285 +618,228 @@
             showModal(`Generating ${type}...`);
 
             try {
-                let contextText = State.documentText.substring(0, 40000); // Send chunk to avoid massive payloads
+                const contextText = State.documentText.substring(0, 40000); // limit payload size
 
                 if (type === 'presentation') {
                     const prompt = `Analyze the following text and create a presentation with 5 to 8 slides summarizing the key points.
                     Output MUST be valid JSON matching this schema:
-                    [
-                        {
-                            "title": "Slide Title",
-                            "points": ["Bullet point 1", "Bullet point 2"],
-                            "chartType": "none" | "bar" | "pie",
-                            "chartData": {"labels": [], "data": []} // Provide simple dummy data if chartType is not none
-                        }
-                    ]
-                    
-                    Text Context:
-                    ${contextText}`;
+                    {
+                        "slides": [
+                            {
+                                "title": "Slide Title",
+                                "bullets": ["Key educational bullet 1", "Key educational bullet 2", "Key educational bullet 3"]
+                            }
+                        ]
+                    }`;
+                    const systemContext = "You are a professional pedagogical advisor and presentation designer. Structure layout content strictly as valid JSON according to instructions.";
+                    const response = await callGemini(prompt + `\n\nText: ${contextText}`, systemContext, true);
 
-                    const data = await callGemini(prompt, "You are an expert presentation creator. Return strictly valid JSON array.", true);
-                    renderPresentation(data);
+                    State.slides = response.slides;
+                    State.currentSlide = 0;
+                    renderSlides();
 
                 } else if (type === 'graph') {
-                    const prompt = `Extract the main concepts and their relationships from the text to create a knowledge graph.
+                    const prompt = `Analyze the text and extract key core concepts (nodes) and their relationships (edges) to form a complete concept map.
                     Output MUST be valid JSON matching this schema:
                     {
-                        "nodes": [{"id": "unique_string", "label": "Concept Name", "group": "category_number"}],
-                        "edges": [{"from": "source_id", "to": "target_id", "label": "relationship label"}]
-                    }
-                    Keep it to max 20 nodes for readability. Ensure 'from' and 'to' in edges match node 'id's.
-                    
-                    Text Context:
-                    ${contextText}`;
-
-                    const data = await callGemini(prompt, "You are a data extractor creating knowledge graphs. Return strictly valid JSON object.", true);
-                    renderGraph(data);
+                        "nodes": [
+                            {"id": 1, "label": "Concept label", "title": "Contextual description of node concept"}
+                        ],
+                        "edges": [
+                            {"from": 1, "to": 2, "label": "Relationship action description"}
+                        ]
+                    }`;
+                    const systemContext = "You are an educational data analyst. Output only pure JSON to organize conceptual nodes and edges.";
+                    const response = await callGemini(prompt + `\n\nText: ${contextText}`, systemContext, true);
+                    renderGraph(response);
 
                 } else if (type === 'mcq') {
-                    const prompt = `Create a 5-question multiple choice quiz based on the core concepts in the text to test reading comprehension.
+                    const prompt = `Build 5 multiple choice questions referencing different difficulty depths based on context concepts.
                     Output MUST be valid JSON matching this schema:
-                    [
-                        {
-                            "question": "The question text?",
-                            "options": ["Option A", "Option B", "Option C", "Option D"],
-                            "answerIndex": 0, // integer index of correct option (0-3)
-                            "explanation": "Why this is correct."
-                        }
-                    ]
-                    
-                    Text Context:
-                    ${contextText}`;
-
-                    const data = await callGemini(prompt, "You are an expert educator. Return strictly valid JSON array.", true);
-                    renderMCQs(data);
+                    {
+                        "questions": [
+                            {
+                                "question": "Question statement?",
+                                "options": ["Option A", "Option B", "Option C", "Option D"],
+                                "answerIndex": 0,
+                                "explanation": "Detailed pedagogical explanation of why this answer is correct."
+                            }
+                        ]
+                    }`;
+                    const systemContext = "You are an advanced educational test crafter. Provide comprehensive and challenging multiple-choice quizzes outputted only as raw JSON.";
+                    const response = await callGemini(prompt + `\n\nText: ${contextText}`, systemContext, true);
+                    renderQuiz(response);
                 }
 
             } catch (error) {
+                showToast("Generation Error: " + error.message);
                 console.error(error);
-                showToast("Failed to generate: " + error.message);
             } finally {
                 hideModal();
             }
         }
 
-        // --- Renderers ---
-
-        // 1. Presentation Renderer
-        function renderPresentation(slidesData) {
-            State.slides = slidesData;
-            State.currentSlide = 0;
-            
-            document.getElementById('presentationState').classList.add('hidden');
+        // --- Slides Presentation Drawer ---
+        function renderSlides() {
             const container = document.getElementById('slideContainer');
-            const controls = document.getElementById('slideControls');
-            
             container.innerHTML = '';
-            container.classList.remove('hidden');
-            controls.classList.remove('hidden');
 
-            slidesData.forEach((slide, index) => {
-                const slideEl = document.createElement('div');
-                slideEl.className = `slide p-10 flex flex-col justify-center ${index === 0 ? 'active' : ''} bg-white dark:bg-slate-800`;
-                
-                let contentHtml = `<h2 class="text-4xl font-bold text-pink-600 dark:text-pink-400 mb-8 border-b-2 border-pink-100 dark:border-pink-900/50 pb-4">${slide.title}</h2>`;
-                
-                contentHtml += `<div class="flex-1 flex gap-8">`;
-                
-                // Text column
-                contentHtml += `<ul class="space-y-4 text-xl flex-1 text-gray-700 dark:text-gray-300">
-                    ${slide.points.map(p => `<li class="flex items-start"><i class="fa-solid fa-caret-right text-pink-500 mt-1.5 mr-3 text-sm"></i> <span>${p}</span></li>`).join('')}
-                </ul>`;
+            State.slides.forEach((slide, idx) => {
+                const slideDiv = document.createElement('div');
+                slideDiv.className = `slide p-6 md:p-8 flex flex-col justify-center h-full text-left bg-white dark:bg-slate-800 ${idx === State.currentSlide ? 'active' : ''}`;
 
-                // Simple Chart Mockup if requested
-                if (slide.chartType && slide.chartType !== 'none' && slide.chartData) {
-                    contentHtml += `<div class="w-1/3 flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-700/50 rounded-xl p-4 border border-slate-100 dark:border-slate-700">
-                        <div class="text-sm font-medium text-slate-500 mb-4 uppercase tracking-wider">${slide.chartType} Chart representation</div>
-                        <div class="w-full flex items-end justify-center gap-2 h-32 border-b border-l border-slate-300 dark:border-slate-600 pb-1 pl-1">
-                            ${slide.chartData.data.map((val, i) => `
-                                <div class="flex flex-col items-center w-1/4 group">
-                                    <div class="w-full bg-gradient-to-t from-pink-600 to-pink-400 rounded-t-sm transition-all group-hover:opacity-80 relative" style="height: ${Math.max(10, val)}%;">
-                                        <span class="absolute -top-6 left-1/2 transform -translate-x-1/2 text-xs font-bold text-slate-600 dark:text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity">${val}</span>
-                                    </div>
-                                    <span class="text-[10px] mt-1 text-slate-500 truncate w-full text-center" title="${slide.chartData.labels[i] || i}">${slide.chartData.labels[i] || i}</span>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>`;
-                }
-                
-                contentHtml += `</div>`;
-                
-                // Footer
-                contentHtml += `<div class="absolute bottom-4 right-6 text-sm text-gray-400 font-mono">Educator AI // Slide ${index + 1}</div>`;
+                const bulletsList = slide.bullets.map(b => `<li class="text-gray-700 dark:text-gray-300 text-sm md:text-base mb-2">${b}</li>`).join('');
 
-                slideEl.innerHTML = contentHtml;
-                container.appendChild(slideEl);
+                slideDiv.innerHTML = `
+                    <div class="mb-4">
+                        <span class="text-xs font-bold text-pink-500 uppercase tracking-widest">Slide ${idx + 1}</span>
+                        <h2 class="text-xl md:text-2xl font-bold font-serif text-gray-900 dark:text-white mt-1 leading-tight border-b border-pink-100 dark:border-pink-900/30 pb-2">${slide.title}</h2>
+                    </div>
+                    <ul class="list-disc pl-5 mt-4 space-y-2">
+                        ${bulletsList}
+                    </ul>
+                `;
+                container.appendChild(slideDiv);
             });
-            
-            updateSlideIndicator();
+
+            document.getElementById('slideIndicator').textContent = `${State.currentSlide + 1} / ${State.slides.length}`;
+
+            // Show slide elements
+            document.getElementById('presentationState').classList.add('hidden');
+            container.classList.remove('hidden');
+            document.getElementById('slideControls').classList.remove('hidden');
         }
 
         function nextSlide() {
             if (State.currentSlide < State.slides.length - 1) {
-                document.querySelectorAll('.slide')[State.currentSlide].classList.remove('active');
                 State.currentSlide++;
-                document.querySelectorAll('.slide')[State.currentSlide].classList.add('active');
-                updateSlideIndicator();
+                updateActiveSlide();
             }
         }
 
         function prevSlide() {
             if (State.currentSlide > 0) {
-                document.querySelectorAll('.slide')[State.currentSlide].classList.remove('active');
                 State.currentSlide--;
-                document.querySelectorAll('.slide')[State.currentSlide].classList.add('active');
-                updateSlideIndicator();
+                updateActiveSlide();
             }
         }
 
-        function updateSlideIndicator() {
+        function updateActiveSlide() {
+            const slides = document.querySelectorAll('.slide');
+            slides.forEach((slide, idx) => {
+                if (idx === State.currentSlide) {
+                    slide.classList.add('active');
+                } else {
+                    slide.classList.remove('active');
+                }
+            });
             document.getElementById('slideIndicator').textContent = `${State.currentSlide + 1} / ${State.slides.length}`;
         }
 
-        // 2. Knowledge Graph Renderer (using Vis.js)
-        function renderGraph(graphData) {
-            document.getElementById('graphState').classList.add('hidden');
+        // --- Knowledge Graph Drawer ---
+        function renderGraph(data) {
             const container = document.getElementById('network-graph');
-            
-            // Map colors based on groups for visual flair
-            const colors = ['#ec4899', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6'];
-            
-            const nodes = new vis.DataSet(graphData.nodes.map(n => ({
+            document.getElementById('graphState').classList.add('hidden');
+
+            const isDark = document.documentElement.classList.contains('dark');
+            const nodes = data.nodes.map(n => ({
                 id: n.id,
                 label: n.label,
+                title: n.title,
                 color: {
-                    background: colors[parseInt(n.group || 0) % colors.length] || colors[0],
-                    border: '#ffffff'
+                    background: '#db2777',
+                    border: isDark ? '#ec4899' : '#831843',
+                    highlight: { background: '#ec4899', border: '#be185d' }
                 },
-                font: { color: '#ffffff', face: 'ui-sans-serif', size: 14 }
-            })));
+                font: { color: isDark ? '#ffffff' : '#000000', size: 14 }
+            }));
 
-            const edges = new vis.DataSet(graphData.edges.map(e => ({
+            const edges = data.edges.map(e => ({
                 from: e.from,
                 to: e.to,
                 label: e.label,
-                font: { align: 'middle', size: 10, color: document.documentElement.classList.contains('dark') ? '#94a3b8' : '#64748b', strokeWidth: 0 },
-                color: { color: document.documentElement.classList.contains('dark') ? '#475569' : '#cbd5e1' },
-                arrows: 'to'
-            })));
+                color: { color: isDark ? '#475569' : '#cbd5e1', highlight: '#db2777' },
+                font: { color: isDark ? '#94a3b8' : '#64748b', size: 11 }
+            }));
 
-            const data = { nodes: nodes, edges: edges };
+            const graphData = { nodes: new vis.DataSet(nodes), edges: new vis.DataSet(edges) };
+
             const options = {
-                nodes: {
-                    shape: 'box',
-                    margin: 10,
-                    borderWidth: 2,
-                    shadow: true
-                },
-                edges: {
-                    smooth: { type: 'continuous' }
-                },
-                physics: {
-                    barnesHut: { gravitationalConstant: -2000, centralGravity: 0.3, springLength: 150 }
-                },
-                interaction: { hover: true, tooltipDelay: 200 }
+                nodes: { shape: 'dot', size: 20 },
+                edges: { arrows: { to: { enabled: true, scaleFactor: 0.5 } }, smooth: true },
+                physics: { stabilization: true, barnesHut: { springLength: 120 } }
             };
 
-            // Cleanup old instance
-            if (State.network) {
-                State.network.destroy();
-            }
-
-            State.network = new vis.Network(container, data, options);
+            State.network = new vis.Network(container, graphData, options);
         }
 
-        // 3. MCQ Renderer
-        function renderMCQs(mcqData) {
-            document.getElementById('mcqState').classList.add('hidden');
+        // --- Quiz MCQ Drawer ---
+        function renderQuiz(data) {
             const container = document.getElementById('mcqContainer');
             container.innerHTML = '';
+            document.getElementById('mcqState').classList.add('hidden');
             container.classList.remove('hidden');
 
-            mcqData.forEach((q, index) => {
-                const qBlock = document.createElement('div');
-                qBlock.className = 'bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700';
-                
-                let html = `<h4 class="text-lg font-bold mb-4 flex gap-3"><span class="bg-pink-100 dark:bg-pink-900/50 text-pink-600 dark:text-pink-400 w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0">${index + 1}</span> <span>${q.question}</span></h4>`;
-                
-                html += `<div class="space-y-2 mb-4">`;
-                q.options.forEach((opt, optIndex) => {
-                    const id = `q${index}_o${optIndex}`;
-                    html += `
-                        <label class="flex items-center p-3 border border-gray-200 dark:border-gray-700 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors group">
-                            <input type="radio" name="q${index}" value="${optIndex}" class="w-4 h-4 text-pink-600 bg-gray-100 border-gray-300 focus:ring-pink-500 dark:focus:ring-pink-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600 mr-3">
-                            <span class="text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white">${opt}</span>
-                        </label>
-                    `;
-                });
-                html += `</div>`;
+            data.questions.forEach((q, idx) => {
+                const card = document.createElement('div');
+                card.className = "bg-white dark:bg-darkPanel border border-gray-200 dark:border-gray-700 p-5 rounded-2xl shadow-sm space-y-4";
 
-                // Explanation block (hidden initially)
-                html += `
-                    <div id="exp_q${index}" class="hidden mt-4 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900 rounded-lg">
-                        <p class="font-bold text-green-800 dark:text-green-400 mb-1"><i class="fa-solid fa-check-circle mr-2"></i>Correct Answer: ${q.options[q.answerIndex]}</p>
-                        <p class="text-sm text-green-700 dark:text-green-300">${q.explanation}</p>
+                let optionsHtml = q.options.map((option, optIdx) => `
+                    <label class="flex items-start gap-3 p-3 rounded-xl border border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer transition-all text-sm relative">
+                        <input type="radio" name="q-${idx}" value="${optIdx}" class="mt-1 accent-pink-500 shrink-0">
+                        <span class="text-gray-700 dark:text-gray-200">${option}</span>
+                    </label>
+                `).join('');
+
+                card.innerHTML = `
+                    <div class="flex gap-3">
+                        <span class="bg-pink-100 dark:bg-pink-900/40 text-pink-700 dark:text-pink-300 font-bold px-2.5 py-1 rounded-lg text-xs self-start">${idx + 1}</span>
+                        <h4 class="font-semibold text-base text-gray-800 dark:text-gray-100">${q.question}</h4>
                     </div>
-                    <div id="wrong_q${index}" class="hidden mt-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900 rounded-lg">
-                        <p class="font-bold text-red-800 dark:text-red-400"><i class="fa-solid fa-xmark-circle mr-2"></i>Incorrect.</p>
+                    <div class="space-y-2 option-list">
+                        ${optionsHtml}
                     </div>
+                    <button onclick="checkAnswer(${idx}, ${q.answerIndex}, '${q.explanation.replace(/'/g, "\\'")}')" class="submit-btn bg-pink-500 hover:bg-pink-600 text-white w-full py-2.5 rounded-xl text-sm font-semibold transition-colors mt-2">
+                        Submit Answer
+                    </button>
+                    <div class="feedback hidden p-4 rounded-xl text-sm space-y-2 border"></div>
                 `;
-
-                html += `<button onclick="checkAnswer(${index}, ${q.answerIndex})" class="mt-2 text-sm font-semibold text-pink-600 hover:text-pink-700 dark:text-pink-400 dark:hover:text-pink-300">Check Answer</button>`;
-
-                qBlock.innerHTML = html;
-                container.appendChild(qBlock);
+                container.appendChild(card);
             });
         }
 
-        // Global function for onclick in generated HTML
-        window.checkAnswer = function(qIndex, correctIndex) {
-            const selected = document.querySelector(`input[name="q${qIndex}"]:checked`);
-            const expBlock = document.getElementById(`exp_q${qIndex}`);
-            const wrongBlock = document.getElementById(`wrong_q${qIndex}`);
-            
-            expBlock.classList.add('hidden');
-            wrongBlock.classList.add('hidden');
-
+        function checkAnswer(questionIdx, correctIdx, explanation) {
+            const card = document.querySelectorAll('#mcqContainer > div')[questionIdx];
+            const selected = card.querySelector(`input[name="q-${questionIdx}"]:checked`);
             if (!selected) {
-                showToast("Please select an option first.");
+                showToast("Please choose an option first!");
                 return;
             }
 
-            if (parseInt(selected.value) === correctIndex) {
-                expBlock.classList.remove('hidden');
-            } else {
-                wrongBlock.classList.remove('hidden');
-                // Optional: Automatically show explanation after wrong answer
-                // setTimeout(() => expBlock.classList.remove('hidden'), 1000);
-            }
-        };
+            const chosenIdx = parseInt(selected.value);
+            const isCorrect = chosenIdx === correctIdx;
+            const feedback = card.querySelector('.feedback');
+            const submitBtn = card.querySelector('.submit-btn');
 
+            feedback.className = "feedback p-4 rounded-xl text-sm space-y-2 border " +
+                (isCorrect
+                    ? "bg-green-50 dark:bg-green-950/20 text-green-800 dark:text-green-300 border-green-200 dark:border-green-900/50"
+                    : "bg-red-50 dark:bg-red-950/20 text-red-800 dark:text-red-300 border-red-200 dark:border-red-900/50");
 
-        // --- Utilities (Modals & Toasts) ---
-        function showModal(title) {
-            document.getElementById('generationTitle').textContent = title;
-            document.getElementById('generationModal').classList.remove('hidden');
+            feedback.innerHTML = `
+                <div class="flex items-center gap-2 font-bold">
+                    <i class="fa-solid ${isCorrect ? 'fa-circle-check text-green-500' : 'fa-circle-xmark text-red-500'}"></i>
+                    <span>${isCorrect ? 'Correct!' : 'Incorrect'}</span>
+                </div>
+                <p class="text-gray-600 dark:text-gray-400 text-xs md:text-sm mt-1">${explanation}</p>
+            `;
+
+            feedback.classList.remove('hidden');
+            submitBtn.classList.add('hidden');
+
+            // Disable all radio buttons
+            card.querySelectorAll(`input[name="q-${questionIdx}"]`).forEach(input => input.disabled = true);
         }
-
-        function hideModal() {
-            document.getElementById('generationModal').classList.add('hidden');
-        }
-
-        function showToast(msg) {
-            const toast = document.getElementById('toast');
-            document.getElementById('toastMessage').textContent = msg;
-            toast.classList.remove('translate-y-20', 'opacity-0');
-            setTimeout(() => {
-                toast.classList.add('translate-y-20', 'opacity-0');
-            }, 3000);
-        }
-
     </script>
 </body>
 </html>
